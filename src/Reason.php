@@ -33,4 +33,9 @@ class Reason
      * The row is no longer there.
      */
     const MISSING = 'row not found';
+
+    /**
+     * Revert refused because the live cell is no longer the recorded value.
+     */
+    const CHANGED = 'cell has changed since the replacement';
 }
