@@ -13,6 +13,11 @@ abstract class DatabaseTestCase extends \Nails\Common\Tests\TestCase
     /** @var list<string> */
     private array $tables = [];
 
+    protected function registerTable(string $name): void
+    {
+        $this->tables[] = $name;
+    }
+
     protected function pdo(): PDODatabase
     {
         $database = Factory::service('PDODatabase');
@@ -69,10 +74,10 @@ abstract class DatabaseTestCase extends \Nails\Common\Tests\TestCase
 
     public function tearDown(): void
     {
+        parent::tearDown();
+
         foreach ($this->tables as $name) {
             $this->pdo()->query('DROP TABLE IF EXISTS `' . str_replace('`', '``', $name) . '`');
         }
-
-        parent::tearDown();
     }
 }
