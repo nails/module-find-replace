@@ -29,9 +29,11 @@ class Engine
     }
 
     /**
+     * @param null|callable(int, int): void $progress Tables scanned, then the total in scope
+     *
      * @return list<Hit>
      */
-    public function search(Query $query): array
+    public function search(Query $query, ?callable $progress = null): array
     {
         foreach ([...$query->getTables(), ...$query->getExcludeTables()] as $entry) {
             Pattern::assertValid($entry);
@@ -49,9 +51,14 @@ class Engine
         }
 
         $results = [];
+        $scanned = 0;
+        $total = count($byTable);
+        $this->report($progress, $scanned, $total);
 
         foreach ($byTable as $table => $locations) {
             $matches = $this->matches($table, $locations, $term, $query);
+            $scanned++;
+            $this->report($progress, $scanned, $total);
 
             if ($matches === []) {
                 continue;
@@ -114,6 +121,25 @@ class Engine
         }
 
         return $outcomes;
+    }
+
+    /**
+     * Restores one change when the live cell still equals value_after.
+     * The restored row is recorded as a new change on $run.
+     */
+    public function revertChange(ChangeRecord $row, Change $changes, Run $run): Outcome
+    {
+        return $this->revertRow($row, $changes, $run);
+    }
+
+    /**
+     * @param null|callable(int, int): void $progress
+     */
+    private function report(?callable $progress, int $scanned, int $total): void
+    {
+        if ($progress !== null) {
+            $progress($scanned, $total);
+        }
     }
 
     /**
