@@ -113,12 +113,93 @@ class Change extends Base
                 `term`,
                 `replacement`,
                 `value_before`,
-                `value_after`
+                `value_after`,
+                `created`
             FROM ' . $this->quote($this->getTableName()) . '
             WHERE `run_id` = :run_id
             ORDER BY `id` ASC'
         );
         $statement->execute(['run_id' => $runId]);
+        $rows = [];
+
+        foreach ($statement->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $normalised = [];
+
+            foreach ($row as $key => $value) {
+                if (is_string($key)) {
+                    $normalised[$key] = $value;
+                }
+            }
+
+            $rows[] = $this->recordFrom($normalised);
+        }
+
+        return $rows;
+    }
+
+    public function findForUser(PDODatabase $database, int $id, int $userId): ?ChangeRecord
+    {
+        $rows = $this->selectWhere(
+            $database,
+            '`id` = :id AND `user_id` = :user_id AND `source` = :source',
+            [
+                'id' => $id,
+                'user_id' => $userId,
+                'source' => Run::SOURCE_ADMIN,
+            ],
+        );
+
+        return $rows[0] ?? null;
+    }
+
+    /**
+     * Admin changes for one user, newest first. CLI changes are omitted.
+     *
+     * @return list<ChangeRecord>
+     */
+    public function forUser(PDODatabase $database, int $userId): array
+    {
+        return $this->selectWhere(
+            $database,
+            '`user_id` = :user_id AND `source` = :source ORDER BY `id` DESC',
+            [
+                'user_id' => $userId,
+                'source' => Run::SOURCE_ADMIN,
+            ],
+        );
+    }
+
+    /**
+     * @param array<string, int|string> $parameters
+     *
+     * @return list<ChangeRecord>
+     */
+    private function selectWhere(PDODatabase $database, string $where, array $parameters): array
+    {
+        $statement = $database->prepare(
+            'SELECT
+                `id`,
+                `run_id`,
+                `search_id`,
+                `user_id`,
+                `source`,
+                `table_name`,
+                `primary_key`,
+                `column_name`,
+                `encoding`,
+                `term`,
+                `replacement`,
+                `value_before`,
+                `value_after`,
+                `created`
+            FROM ' . $this->quote($this->getTableName()) . '
+            WHERE ' . $where
+        );
+        $statement->execute($parameters);
         $rows = [];
 
         foreach ($statement->fetchAll(\PDO::FETCH_ASSOC) as $row) {
@@ -159,6 +240,7 @@ class Change extends Base
             $this->stringValue($row, 'replacement'),
             $this->stringValue($row, 'value_before'),
             $this->stringValue($row, 'value_after'),
+            $this->optionalString($row, 'created'),
         );
     }
 
@@ -206,6 +288,24 @@ class Change extends Base
         }
 
         return (int) $value;
+    }
+
+    /**
+     * @param array<string, mixed> $row
+     */
+    private function optionalString(array $row, string $key): ?string
+    {
+        if (!array_key_exists($key, $row) || $row[$key] === null) {
+            return null;
+        }
+
+        $value = $row[$key];
+
+        if (!is_string($value) && !is_int($value) && !is_float($value)) {
+            return null;
+        }
+
+        return (string) $value;
     }
 
     private function quote(string $identifier): string
