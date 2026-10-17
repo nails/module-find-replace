@@ -4,13 +4,17 @@ namespace Nails\FindReplace\Service;
 
 use Nails\Common\Service\PDODatabase;
 use Nails\FindReplace\Exclusion\Pattern;
+use Nails\FindReplace\Factory\ChangeRecord;
 use Nails\FindReplace\Factory\Hit;
 use Nails\FindReplace\Factory\Location;
 use Nails\FindReplace\Factory\Matched;
 use Nails\FindReplace\Factory\Outcome;
 use Nails\FindReplace\Factory\Query;
+use Nails\FindReplace\Factory\Run;
 use Nails\FindReplace\Factory\Term;
+use Nails\FindReplace\Model\Change;
 use Nails\FindReplace\Reason;
+use Nails\FindReplace\Scope;
 use Nails\FindReplace\Resolver\TableColumn;
 use Nails\FindReplace\Serialised;
 
@@ -69,17 +73,44 @@ class Engine
 
     /**
      * Re-reads each cell and re-checks the current exclusions before writing.
+     * Applied rows are recorded on $changes in the same transaction as the update.
      *
      * @param iterable<Hit> $hits
      *
      * @return list<Outcome>
      */
-    public function replace(iterable $hits, string $replacement, bool $caseSensitive = true): array
-    {
+    public function replace(
+        iterable $hits,
+        string $replacement,
+        bool $caseSensitive = true,
+        ?Change $changes = null,
+        ?Run $run = null,
+    ): array {
+        if (($changes === null) !== ($run === null)) {
+            throw new \InvalidArgumentException('Change rows are written with a replace run');
+        }
+
         $outcomes = [];
 
         foreach ($hits as $hit) {
-            $outcomes[] = $this->replaceHit($hit, $replacement, $caseSensitive);
+            $outcomes[] = $this->replaceHit($hit, $replacement, $caseSensitive, $changes, $run);
+        }
+
+        return $outcomes;
+    }
+
+    /**
+     * Restores value_before where the live cell still equals value_after.
+     * Each restored row is recorded as a new change on $run.
+     *
+     * @return list<Outcome>
+     */
+    public function revert(string $runId, Change $changes, Run $run): array
+    {
+        $outcomes = [];
+
+        foreach ($changes->forRun($this->database, $runId) as $row) {
+            $outcomes[] = $this->revertRow($row, $changes, $run);
         }
 
         return $outcomes;
@@ -236,7 +267,176 @@ class Engine
         return $hits;
     }
 
-    private function replaceHit(Hit $hit, string $replacement, bool $caseSensitive): Outcome
+    private function replaceHit(
+        Hit $hit,
+        string $replacement,
+        bool $caseSensitive,
+        ?Change $changes,
+        ?Run $run,
+    ): Outcome {
+        $opened = $this->open($hit);
+
+        if ($opened instanceof Outcome) {
+            return $opened;
+        }
+
+        [$location, $matched] = $opened;
+
+        if ($changes !== null && $run !== null) {
+            return $this->commitReplacement(
+                $hit,
+                $location,
+                $matched,
+                $replacement,
+                $caseSensitive,
+                $changes,
+                $run,
+            );
+        }
+
+        try {
+            $content = $this->readCell($location, $matched->getId(), false);
+        } catch (\PDOException $exception) {
+            return new Outcome(Outcome::FAILED, $hit, $exception->getMessage());
+        }
+
+        $decision = $this->assess($hit, $matched, $content, $replacement, $caseSensitive);
+
+        if ($decision instanceof Outcome) {
+            return $decision;
+        }
+
+        try {
+            $this->updateCell($location, $matched->getId(), $decision['after']);
+        } catch (\PDOException $exception) {
+            return new Outcome(Outcome::FAILED, $hit, $exception->getMessage());
+        }
+
+        return new Outcome(Outcome::APPLIED, $hit, null, $decision['before'], $decision['after']);
+    }
+
+    private function commitReplacement(
+        Hit $hit,
+        Location $location,
+        Matched $matched,
+        string $replacement,
+        bool $caseSensitive,
+        Change $changes,
+        Run $run,
+    ): Outcome {
+        $transaction = $this->database->transaction();
+        $transaction->start();
+
+        try {
+            $content = $this->readCell($location, $matched->getId(), true);
+            $decision = $this->assess($hit, $matched, $content, $replacement, $caseSensitive);
+
+            if ($decision instanceof Outcome) {
+                $transaction->rollback();
+
+                return $decision;
+            }
+
+            $this->updateCell($location, $matched->getId(), $decision['after']);
+            $changes->record(
+                $this->database,
+                $run,
+                $location->getTable(),
+                $matched->getId(),
+                $location->getColumn(),
+                $matched->getEncoding(),
+                $decision['term'],
+                $decision['replacement'],
+                $decision['before'],
+                $decision['after'],
+            );
+            $transaction->commit();
+
+            return new Outcome(Outcome::APPLIED, $hit, null, $decision['before'], $decision['after']);
+        } catch (\Throwable $exception) {
+            if ($transaction->status()) {
+                $transaction->rollback();
+            }
+
+            return new Outcome(Outcome::FAILED, $hit, $exception->getMessage());
+        }
+    }
+
+    private function revertRow(ChangeRecord $row, Change $changes, Run $run): Outcome
+    {
+        $hit = new Hit(
+            $row->getTable(),
+            $row->getPrimaryKey(),
+            title: $row->getTable() . '.' . $row->getColumn() . ' #' . $row->getPrimaryKey(),
+        );
+        $location = $this->schema->location($row->getTable(), $row->getColumn());
+
+        if ($location === null) {
+            return new Outcome(Outcome::SKIPPED, $hit, Reason::EXCLUDED);
+        }
+
+        if ($location->isReadOnly()) {
+            return new Outcome(
+                Outcome::SKIPPED,
+                $hit,
+                $location->getReadOnlyReason() ?? Reason::READ_ONLY,
+            );
+        }
+
+        if ($location->getPrimaryKey() === null) {
+            return new Outcome(Outcome::SKIPPED, $hit, Reason::NO_PRIMARY_KEY);
+        }
+
+        $transaction = $this->database->transaction();
+        $transaction->start();
+
+        try {
+            $content = $this->readCell($location, $row->getPrimaryKey(), true);
+
+            if ($content === false) {
+                $transaction->rollback();
+
+                return new Outcome(Outcome::SKIPPED, $hit, Reason::MISSING);
+            }
+
+            // Equality is the whole cell. A serialised value that is still the
+            // recorded value_after is restored as bytes, not edited in place.
+            if ($content !== $row->getValueAfter()) {
+                $transaction->rollback();
+
+                return new Outcome(Outcome::SKIPPED, $hit, Reason::CHANGED);
+            }
+
+            $this->updateCell($location, $row->getPrimaryKey(), $row->getValueBefore());
+            $changes->record(
+                $this->database,
+                $run,
+                $location->getTable(),
+                $row->getPrimaryKey(),
+                $location->getColumn(),
+                $row->getEncoding(),
+                $row->getTerm(),
+                $row->getReplacement(),
+                $content,
+                $row->getValueBefore(),
+                $row->getSearchId(),
+            );
+            $transaction->commit();
+
+            return new Outcome(Outcome::APPLIED, $hit, null, $content, $row->getValueBefore());
+        } catch (\Throwable $exception) {
+            if ($transaction->status()) {
+                $transaction->rollback();
+            }
+
+            return new Outcome(Outcome::FAILED, $hit, $exception->getMessage());
+        }
+    }
+
+    /**
+     * @return Outcome|array{0: Location, 1: Matched}
+     */
+    private function open(Hit $hit): Outcome|array
     {
         $matched = $hit->getMatched();
 
@@ -258,29 +458,26 @@ class Engine
             );
         }
 
-        $primaryKey = $location->getPrimaryKey();
-
-        if ($primaryKey === null) {
+        if ($location->getPrimaryKey() === null) {
             return new Outcome(Outcome::SKIPPED, $hit, Reason::NO_PRIMARY_KEY);
         }
 
-        try {
-            $select = $this->database->prepare(
-                'SELECT ' . $this->quote($location->getColumn())
-                . ' FROM ' . $this->quote($location->getTable())
-                . ' WHERE ' . $this->quote($primaryKey) . ' = :id'
-            );
-            $select->execute(['id' => $matched->getId()]);
-            $content = $select->fetchColumn();
-        } catch (\PDOException $exception) {
-            return new Outcome(Outcome::FAILED, $hit, $exception->getMessage());
-        }
+        return [$location, $matched];
+    }
 
+    /**
+     * @return Outcome|array{before: string, after: string, term: string, replacement: string}
+     */
+    private function assess(
+        Hit $hit,
+        Matched $matched,
+        string|false $content,
+        string $replacement,
+        bool $caseSensitive,
+    ): Outcome|array {
         if ($content === false) {
             return new Outcome(Outcome::SKIPPED, $hit, Reason::MISSING);
         }
-
-        $content = (string) $content;
 
         if (Serialised::is($content)) {
             return new Outcome(Outcome::SKIPPED, $hit, Reason::SERIALISED);
@@ -301,23 +498,51 @@ class Engine
             return new Outcome(Outcome::FAILED, $hit, $exception->getMessage());
         }
 
-        $updated = $this->replaceTerm($content, $needle, $encoded, $caseSensitive);
+        return [
+            'before' => $content,
+            'after' => $this->replaceTerm($content, $needle, $encoded, $caseSensitive),
+            'term' => $needle,
+            'replacement' => $encoded,
+        ];
+    }
 
-        try {
-            $update = $this->database->prepare(
-                'UPDATE ' . $this->quote($location->getTable())
-                . ' SET ' . $this->quote($location->getColumn()) . ' = :content'
-                . ' WHERE ' . $this->quote($primaryKey) . ' = :id'
-            );
-            $update->execute([
-                'content' => $updated,
-                'id' => $matched->getId(),
-            ]);
-        } catch (\PDOException $exception) {
-            return new Outcome(Outcome::FAILED, $hit, $exception->getMessage());
+    private function readCell(Location $location, string $id, bool $lock): string|false
+    {
+        $primaryKey = $location->getPrimaryKey();
+
+        if ($primaryKey === null) {
+            return false;
         }
 
-        return new Outcome(Outcome::APPLIED, $hit, null, $content, $updated);
+        $select = $this->database->prepare(
+            'SELECT ' . $this->quote($location->getColumn())
+            . ' FROM ' . $this->quote($location->getTable())
+            . ' WHERE ' . $this->quote($primaryKey) . ' = :id'
+            . ($lock ? ' FOR UPDATE' : '')
+        );
+        $select->execute(['id' => $id]);
+        $content = $select->fetchColumn();
+
+        return $content === false ? false : (string) $content;
+    }
+
+    private function updateCell(Location $location, string $id, string $content): void
+    {
+        $primaryKey = $location->getPrimaryKey();
+
+        if ($primaryKey === null) {
+            throw new \RuntimeException('Cannot update a row without a primary key');
+        }
+
+        $update = $this->database->prepare(
+            'UPDATE ' . $this->quote($location->getTable())
+            . ' SET ' . $this->quote($location->getColumn()) . ' = :content'
+            . ' WHERE ' . $this->quote($primaryKey) . ' = :id'
+        );
+        $update->execute([
+            'content' => $content,
+            'id' => $id,
+        ]);
     }
 
     private function replaceTerm(
@@ -351,26 +576,12 @@ class Engine
 
     private function inScope(Location $location, Query $query): bool
     {
-        $included = $query->getTables() === [];
-
-        foreach ($query->getTables() as $entry) {
-            if (Pattern::covers($entry, $location->getTable(), $location->getColumn())) {
-                $included = true;
-                break;
-            }
-        }
-
-        if (!$included) {
-            return false;
-        }
-
-        foreach ($query->getExcludeTables() as $entry) {
-            if (Pattern::covers($entry, $location->getTable(), $location->getColumn())) {
-                return false;
-            }
-        }
-
-        return true;
+        return Scope::includes(
+            $location->getTable(),
+            $location->getColumn(),
+            $query->getTables(),
+            $query->getExcludeTables(),
+        );
     }
 
     /**
