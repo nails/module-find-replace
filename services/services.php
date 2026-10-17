@@ -6,6 +6,7 @@ use Nails\FindReplace\Constants;
 use Nails\FindReplace\Factory\Query;
 use Nails\FindReplace\Factory\Term;
 use Nails\FindReplace\Model;
+use Nails\FindReplace\Resource;
 use Nails\FindReplace\Service\Engine;
 use Nails\FindReplace\Service\Registry;
 use Nails\FindReplace\Service\Schema;
@@ -48,6 +49,11 @@ return [
         },
         'Change' => function (): Model\Change {
             return new Model\Change();
+        },
+    ],
+    'resources' => [
+        'Change' => function ($resource, $model = null): Resource\Change {
+            return new Resource\Change($resource);
         },
     ],
     'factories' => [
