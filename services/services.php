@@ -88,6 +88,16 @@ return [
             return new Resource\Search($resource);
         },
     ],
+    'models' => [
+        'Change' => function (): Model\Change {
+            return new Model\Change();
+        },
+    ],
+    'resources' => [
+        'Change' => function ($resource, $model = null): Resource\Change {
+            return new Resource\Change($resource);
+        },
+    ],
     'factories' => [
         'Term' => function (string $term): Term {
             return new Term($term);
