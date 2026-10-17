@@ -234,10 +234,10 @@ if ($search->status() === Search::STATUS_COMPLETE) {
     if ($canReplace && $rows !== []) {
         ?>
         <div class="admin-floating-controls">
-            <button type="submit" name="scope" value="selected" class="btn btn-danger js-find-replace-apply" data-scope="selected" disabled>
+            <button type="button" class="btn btn-danger js-find-replace-apply" data-scope="selected" disabled>
                 Replace selected
             </button>
-            <button type="submit" name="scope" value="all" class="btn btn-danger js-find-replace-apply" data-scope="all">
+            <button type="button" class="btn btn-danger js-find-replace-apply" data-scope="all">
                 <?=$filtered ? 'Replace matching filters' : 'Replace all'?>
             </button>
         </div>
