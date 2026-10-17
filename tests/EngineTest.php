@@ -5,8 +5,11 @@ namespace Tests\FindReplace;
 require_once __DIR__ . '/DatabaseTestCase.php';
 require_once __DIR__ . '/Support/ListExclusion.php';
 
+use Nails\Common\Service\PDODatabase;
 use Nails\FindReplace\Factory\Outcome;
 use Nails\FindReplace\Factory\Query;
+use Nails\FindReplace\Factory\Run;
+use Nails\FindReplace\Model\Change;
 use Nails\FindReplace\Reason;
 use Nails\FindReplace\Service\Registry;
 use Tests\FindReplace\Support\ListExclusion;
@@ -122,5 +125,46 @@ class EngineTest extends DatabaseTestCase
         $applied = $engine->replace($marker, 'plain text');
         $this->assertSame(Outcome::APPLIED, $applied[0]->getStatus());
         $this->assertSame('a: plain text', $this->cell($table, 'body', '3'));
+    }
+
+    public function test_a_failed_change_row_rolls_the_update_back(): void
+    {
+        $table = 'fr_audit';
+        $this->createTable($table, '
+            `id` INT NOT NULL AUTO_INCREMENT,
+            `body` VARCHAR(50) NULL,
+            PRIMARY KEY (`id`)
+        ');
+        $this->insert($table, ['id' => 1, 'body' => 'alpha']);
+
+        $changes = new class extends Change {
+            public function record(
+                PDODatabase $database,
+                Run $run,
+                string $table,
+                string $primaryKey,
+                string $column,
+                string $encoding,
+                string $term,
+                string $replacement,
+                string $valueBefore,
+                string $valueAfter,
+                ?int $searchId = null,
+            ): void {
+                throw new \RuntimeException('change insert failed');
+            }
+        };
+
+        $outcomes = $this->engine()->replace(
+            $this->engine()->search(new Query('alpha', tables: [$table])),
+            'gamma',
+            true,
+            $changes,
+            Run::cli(),
+        );
+
+        $this->assertSame(Outcome::FAILED, $outcomes[0]->getStatus());
+        $this->assertSame('change insert failed', $outcomes[0]->getReason());
+        $this->assertSame('alpha', $this->cell($table, 'body', '1'));
     }
 }
