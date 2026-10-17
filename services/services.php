@@ -92,10 +92,22 @@ return [
         'Change' => function (): Model\Change {
             return new Model\Change();
         },
+        'Search' => function (): Model\Search {
+            return new Model\Search();
+        },
+        'Result' => function (): Model\Result {
+            return new Model\Result();
+        },
+        'ResultFacet' => function (): Model\Result\Facet {
+            return new Model\Result\Facet();
+        },
     ],
     'resources' => [
         'Change' => function ($resource, $model = null): Resource\Change {
             return new Resource\Change($resource);
+        },
+        'Search' => function ($resource, $model = null): Resource\Search {
+            return new Resource\Search($resource);
         },
     ],
     'factories' => [
