@@ -18,6 +18,7 @@ class ChangeRecord
         private readonly string $replacement,
         private readonly string $valueBefore,
         private readonly string $valueAfter,
+        private readonly ?string $created = null,
     ) {
     }
 
@@ -84,5 +85,10 @@ class ChangeRecord
     public function getValueAfter(): string
     {
         return $this->valueAfter;
+    }
+
+    public function getCreated(): ?string
+    {
+        return $this->created;
     }
 }

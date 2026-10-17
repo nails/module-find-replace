@@ -24,6 +24,11 @@ class Run
         return new self(self::id(), self::SOURCE_CLI);
     }
 
+    public static function admin(int $userId, ?int $searchId = null): self
+    {
+        return new self(self::id(), self::SOURCE_ADMIN, $searchId, $userId);
+    }
+
     public static function id(): string
     {
         $bytes = random_bytes(16);
