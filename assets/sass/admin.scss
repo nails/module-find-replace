@@ -1,0 +1,25 @@
+.find-replace-results,
+.find-replace-snippet,
+.find-replace-preview {
+    mark {
+        padding: 0 0.15em;
+    }
+}
+
+.find-replace-snippet mark {
+    background-color: #c8f7c5;
+}
+
+.find-replace-preview mark {
+    background-color: #c5ddf7;
+}
+
+.find-replace-results {
+    td.actions .btn {
+        margin-bottom: 0.25rem;
+    }
+}
+
+[data-find-replace-status] {
+    font-variant-numeric: tabular-nums;
+}
