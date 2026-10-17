@@ -1,5 +1,7 @@
 parameters:
     level: 10
+    bootstrapFiles:
+        - stubs.php
     paths:
         - ../src
         - ../tests
