@@ -6,5 +6,5 @@ use Nails\Common\Model\Base;
 
 class Result extends Base
 {
-    const TABLE = 'nails_find_replace_result';
+    const TABLE = NAILS_DB_PREFIX . 'find_replace_result';
 }

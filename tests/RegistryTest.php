@@ -102,11 +102,11 @@ class RegistryTest extends TestCase
     {
         $registry = new Registry([]);
 
-        $this->assertSame(Location::HIDDEN, $registry->access('nails_find_replace_search', 'term'));
-        $this->assertSame(Location::HIDDEN, $registry->access('nails_find_replace_result', 'snippet'));
-        $this->assertSame(Location::HIDDEN, $registry->access('nails_find_replace_result_facet', 'value'));
-        $this->assertSame(Location::HIDDEN, $registry->access('nails_find_replace_change', 'value_before'));
-        $this->assertSame(Location::SEARCHABLE, $registry->access('nails_find_replace_search_extra', 'term'));
+        $this->assertSame(Location::HIDDEN, $registry->access(NAILS_DB_PREFIX . 'find_replace_search', 'term'));
+        $this->assertSame(Location::HIDDEN, $registry->access(NAILS_DB_PREFIX . 'find_replace_result', 'snippet'));
+        $this->assertSame(Location::HIDDEN, $registry->access(NAILS_DB_PREFIX . 'find_replace_result_facet', 'value'));
+        $this->assertSame(Location::HIDDEN, $registry->access(NAILS_DB_PREFIX . 'find_replace_change', 'value_before'));
+        $this->assertSame(Location::SEARCHABLE, $registry->access(NAILS_DB_PREFIX . 'find_replace_search_extra', 'term'));
         $this->assertSame(Location::HIDDEN, $registry->access('any_table', 'token'));
         $this->assertSame(Location::HIDDEN, $registry->access('any_table', 'ref'));
         $this->assertSame(Location::SEARCHABLE, $registry->access('any_table', 'claim_token'));

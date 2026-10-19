@@ -6,5 +6,5 @@ use Nails\Common\Model\Base;
 
 class Search extends Base
 {
-    const TABLE = 'nails_find_replace_search';
+    const TABLE = NAILS_DB_PREFIX . 'find_replace_search';
 }
