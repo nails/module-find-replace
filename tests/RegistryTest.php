@@ -3,11 +3,13 @@
 namespace Tests\FindReplace;
 
 require_once __DIR__ . '/Support/ListExclusion.php';
+require_once __DIR__ . '/Support/StatusResolver.php';
 
 use Nails\FindReplace\Factory\Location;
 use Nails\FindReplace\Service\Registry;
 use PHPUnit\Framework\TestCase;
 use Tests\FindReplace\Support\ListExclusion;
+use Tests\FindReplace\Support\StatusResolver;
 
 class RegistryTest extends TestCase
 {
@@ -121,6 +123,43 @@ class RegistryTest extends TestCase
 
         $this->assertSame(Location::HIDDEN, $registry->access('pages', 'token'));
         $this->assertSame('Resolver', $registry->facets()['resolver'] ?? null);
+        $this->assertArrayHasKey('resolver', $registry->facetValues());
+        $this->assertNull($registry->facetValues()['resolver']);
+    }
+
+    public function test_typed_facet_values_are_a_sorted_union(): void
+    {
+        $registry = new Registry([], [
+            new StatusResolver(),
+            new StatusResolver(values: ['status' => ['ARCHIVED', 'DRAFT']]),
+        ]);
+
+        $this->assertSame(['ARCHIVED', 'DRAFT', 'PUBLISHED'], $registry->facetValues()['status']);
+        $this->assertArrayHasKey('language', $registry->facetValues());
+        $this->assertNull($registry->facetValues()['language']);
+        $this->assertSame('Language', $registry->facets()['language'] ?? null);
+        $this->assertNull($registry->facetValues()['resolver']);
+    }
+
+    public function test_an_open_declaration_keeps_the_facet_untyped(): void
+    {
+        $registry = new Registry([], [
+            new StatusResolver(values: []),
+            new StatusResolver(),
+        ]);
+
+        $this->assertArrayHasKey('status', $registry->facetValues());
+        $this->assertNull($registry->facetValues()['status']);
+    }
+
+    public function test_blank_facet_value_throws(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Facet values must be a list of strings');
+
+        (new Registry([], [
+            new StatusResolver(values: ['status' => ['']]),
+        ]))->facets();
     }
 
     /**

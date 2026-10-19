@@ -15,6 +15,7 @@ use Nails\FindReplace\Factory\Run;
 use Nails\FindReplace\Reason;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 
 class CommandTest extends DatabaseTestCase
@@ -57,16 +58,26 @@ class CommandTest extends DatabaseTestCase
 
         $this->assertSame(0, $output->getStatusCode());
         $this->assertStringContainsString('Facets:', $display);
-        $this->assertStringContainsString('resolver', $display);
-        $this->assertStringContainsString('Resolver', $display);
+        $this->assertStringContainsString("resolver\n    Resolver\n    Accepts any value", $display);
+        $this->assertStringContainsString('Pass as --facet=key:value', $display);
         $this->assertStringContainsString('Resolvers:', $display);
         $this->assertStringContainsString('Tables:', $display);
-        $this->assertMatchesRegularExpression('/' . $table . '\s+\|\s+body\s+\|\s+searchable\s+\|/', $display);
+        $this->assertStringContainsString('Pass as --table=name or --table=name.column', $display);
+        $this->assertStringContainsString('Re-run with -v', $display);
+        $this->assertStringContainsString($table, $display);
+        $this->assertDoesNotMatchRegularExpression('/' . $table . '\n    body\s+searchable/', $display);
+
+        $verbose = $this->executeCommand(new Fields(), [], verbosity: OutputInterface::VERBOSITY_VERBOSE);
+        $columns = $verbose->getDisplay();
+
+        $this->assertSame(0, $verbose->getStatusCode());
+        $this->assertStringNotContainsString('Re-run with -v', $columns);
         $this->assertMatchesRegularExpression(
-            '/' . $table . '\s+\|\s+slug\s+\|\s+read-only\s+\|\s+' . preg_quote(Reason::READ_ONLY, '/') . '/',
-            $display,
+            '/' . $table . '\n    body\s+searchable\n    slug\s+read-only\s+' . preg_quote(Reason::READ_ONLY, '/') . '/',
+            $columns,
         );
-        $this->assertDoesNotMatchRegularExpression('/' . $table . '\s+\|\s+token\s+\|/', $display);
+        $this->assertSame(1, substr_count($columns, $table));
+        $this->assertDoesNotMatchRegularExpression('/\n    token\s+/', $columns);
     }
 
     public function test_search_prints_a_table_and_writes_csv_and_json(): void
@@ -433,8 +444,13 @@ class CommandTest extends DatabaseTestCase
      * @param array<string, mixed> $input
      * @param list<string> $answers
      */
-    private function executeCommand(Command $command, array $input, bool $interactive = false, array $answers = []): CommandTester
-    {
+    private function executeCommand(
+        Command $command,
+        array $input,
+        bool $interactive = false,
+        array $answers = [],
+        int $verbosity = OutputInterface::VERBOSITY_NORMAL,
+    ): CommandTester {
         Factory::destroyService('Schema', Constants::MODULE_SLUG);
         Factory::destroyService('Engine', Constants::MODULE_SLUG);
         Factory::destroyModel('Change', Constants::MODULE_SLUG);
@@ -455,7 +471,10 @@ class CommandTest extends DatabaseTestCase
             $tester->setInputs($answers);
         }
 
-        $tester->execute($input, ['interactive' => $interactive]);
+        $tester->execute($input, [
+            'interactive' => $interactive,
+            'verbosity' => $verbosity,
+        ]);
 
         return $tester;
     }

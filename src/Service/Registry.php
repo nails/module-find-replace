@@ -8,6 +8,7 @@ use Nails\FindReplace\Exclusion\Pattern;
 use Nails\FindReplace\Factory\Location;
 use Nails\FindReplace\Interfaces\Exclusion;
 use Nails\FindReplace\Interfaces\Resolver;
+use Nails\FindReplace\Interfaces\Resolver\FacetValues;
 use Nails\FindReplace\Interfaces\Resolver\Facets;
 
 class Registry
@@ -23,6 +24,9 @@ class Registry
 
     /** @var list<string>|null */
     private ?array $readOnly = null;
+
+    /** @var array<string, array{label: string, values: list<string>|null}>|null */
+    private ?array $catalogue = null;
 
     /**
      * @param list<Exclusion>|null $exclusions Discovered when null. The package exclusion is always included.
@@ -73,8 +77,46 @@ class Registry
      */
     public function facets(): array
     {
-        $facets = [
-            'resolver' => 'Resolver',
+        $labels = [];
+
+        foreach ($this->catalogue() as $key => $facet) {
+            $labels[$key] = $facet['label'];
+        }
+
+        return $labels;
+    }
+
+    /**
+     * Closed values for each facet. Null when the facet accepts any string.
+     * A facet stays open when any resolver that declares it omits a value list.
+     *
+     * @return array<string, list<string>|null>
+     */
+    public function facetValues(): array
+    {
+        $values = [];
+
+        foreach ($this->catalogue() as $key => $facet) {
+            $values[$key] = $facet['values'];
+        }
+
+        return $values;
+    }
+
+    /**
+     * @return array<string, array{label: string, values: list<string>|null}>
+     */
+    private function catalogue(): array
+    {
+        if ($this->catalogue !== null) {
+            return $this->catalogue;
+        }
+
+        $catalogue = [
+            'resolver' => [
+                'label' => 'Resolver',
+                'values' => null,
+            ],
         ];
 
         foreach ($this->resolvers as $resolver) {
@@ -82,12 +124,77 @@ class Registry
                 continue;
             }
 
+            $typed = $this->typedValues($resolver);
+
             foreach ($resolver->facets() as $key => $label) {
-                $facets[$key] = $label;
+                if (!array_key_exists($key, $catalogue)) {
+                    $catalogue[$key] = [
+                        'label' => $label,
+                        'values' => array_key_exists($key, $typed) ? $typed[$key] : null,
+                    ];
+                    continue;
+                }
+
+                $catalogue[$key]['label'] = $label;
+                $current = $catalogue[$key]['values'];
+
+                if (!array_key_exists($key, $typed) || $current === null) {
+                    $catalogue[$key]['values'] = null;
+                    continue;
+                }
+
+                $merged = array_values(array_unique([...$current, ...$typed[$key]]));
+                sort($merged);
+                $catalogue[$key]['values'] = $merged;
             }
         }
 
-        return $facets;
+        $this->catalogue = $catalogue;
+
+        return $catalogue;
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    private function typedValues(Resolver $resolver): array
+    {
+        if (!$resolver instanceof FacetValues) {
+            return [];
+        }
+
+        $typed = [];
+
+        foreach ($resolver->values() as $key => $accepted) {
+            $typed[$key] = $this->valueList($accepted);
+        }
+
+        return $typed;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function valueList(mixed $values): array
+    {
+        if (!is_array($values)) {
+            throw new \InvalidArgumentException('Facet values must be a list of strings');
+        }
+
+        $clean = [];
+
+        foreach ($values as $value) {
+            if (!is_string($value) || $value === '') {
+                throw new \InvalidArgumentException('Facet values must be a list of strings');
+            }
+
+            $clean[] = $value;
+        }
+
+        $clean = array_values(array_unique($clean));
+        sort($clean);
+
+        return $clean;
     }
 
     /**
