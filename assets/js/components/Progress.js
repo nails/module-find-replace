@@ -19,23 +19,24 @@ class Progress {
                     'X-Requested-With': 'XMLHttpRequest',
                 },
             })
-                .then((response) => response.json())
-                .then((data) => {
-                    const scanned = Number(data.tables_scanned) || 0;
-                    const total = Number(data.tables_total) || 0;
-                    const progress = node.querySelector('.find-replace-progress');
-                    const label = scanned + ' / ' + total;
+            .then((response) => response.json())
+            .then((data) => {
+                const payload = data && data.data && !Array.isArray(data.data) ? data.data : data;
+                const scanned = Number(payload.tables_scanned) || 0;
+                const total = Number(payload.tables_total) || 0;
+                const progress = node.querySelector('.find-replace-progress');
+                const label = scanned + ' / ' + total;
 
-                    if (progress) {
-                        progress.textContent = label;
-                    } else {
-                        node.textContent = label;
-                    }
+                if (progress) {
+                    progress.textContent = label;
+                } else {
+                    node.textContent = label;
+                }
 
-                    if (data.status === 'COMPLETE' || data.status === 'FAILED') {
-                        window.location.reload();
-                        return;
-                    }
+                if (payload.status === 'COMPLETE' || payload.status === 'FAILED') {
+                    window.location.reload();
+                    return;
+                }
 
                     this.watch(node);
                 })

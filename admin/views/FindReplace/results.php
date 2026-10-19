@@ -44,7 +44,7 @@ $filtered = $facets !== [];
 
 if ($search->isOpen()) {
     ?>
-    <p data-find-replace-status data-url="<?=htmlspecialchars(FindReplace::url('status') . '?id=' . $id)?>">
+    <p data-find-replace-status data-url="<?=htmlspecialchars(siteUrl('api/find-replace/search/' . $id))?>">
         Scanning tables:
         <span class="find-replace-progress">
             <?=htmlspecialchars((string) $search->tablesScanned())?>

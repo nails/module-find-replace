@@ -24,6 +24,15 @@
     font-variant-numeric: tabular-nums;
 }
 
+.find-replace-searches {
+    margin-top: 2.5rem;
+}
+
+.find-replace-error {
+    margin-top: 0.35rem;
+    color: #a94442;
+}
+
 .find-replace-confirm {
     position: fixed;
     z-index: 1100;

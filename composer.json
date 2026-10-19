@@ -47,6 +47,9 @@
                             ]
                         }
                     }
+                },
+                "nails/module-api": {
+                    "namespace": "find-replace"
                 }
             }
         }

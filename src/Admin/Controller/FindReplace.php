@@ -50,7 +50,6 @@ class FindReplace extends Base
         $this
             ->addBreadcrumb('Utilities')
             ->addBreadcrumb('Find & Replace')
-            ->setData('searches', $this->searches()->forUser($this->userId()))
             ->loadView('index');
     }
 
@@ -107,7 +106,14 @@ class FindReplace extends Base
     {
         $this->requireSearchPermission();
         $search = $this->requireOwned();
-        $facets = $this->facets($this->input());
+
+        try {
+            $facets = $this->facets($this->input());
+        } catch (\InvalidArgumentException $exception) {
+            $this->oUserFeedback->error($exception->getMessage());
+            $facets = [];
+        }
+
         $page = $this->page($this->input());
         $total = 0;
         $rows = [];
@@ -144,7 +150,16 @@ class FindReplace extends Base
     {
         $this->requireSearchPermission();
         $search = $this->requireOwned();
-        $facets = $this->facets($this->input());
+
+        try {
+            $facets = $this->facets($this->input());
+        } catch (\InvalidArgumentException $exception) {
+            $this->oUserFeedback->error($exception->getMessage());
+            redirect(self::url('results') . '?id=' . (int) $search->id);
+
+            return;
+        }
+
         $ids = $this->access()->resultIds((int) $search->id, $this->userId(), $facets, null);
 
         if ($ids === null) {
@@ -182,7 +197,15 @@ class FindReplace extends Base
         $this->requireReplacePermission();
         $search = $this->requireOwned();
         $input = $this->input();
-        $facets = $this->facets($input);
+
+        try {
+            $facets = $this->facets($input);
+        } catch (\InvalidArgumentException $exception) {
+            $this->oUserFeedback->error($exception->getMessage());
+            redirect(self::url('results') . '?id=' . (int) $search->id);
+
+            return;
+        }
         $scope = $this->text($input, 'scope');
         $onlyIds = $scope === 'all' ? null : $this->selectedIds($input);
         $ids = $this->access()->resultIds((int) $search->id, $this->userId(), $facets, $onlyIds);
@@ -457,6 +480,10 @@ class FindReplace extends Base
                 continue;
             }
 
+            if (!$this->registry()->accepts($key, $value)) {
+                throw new \InvalidArgumentException($this->registry()->rejection($key));
+            }
+
             $facets[$key] = $value;
         }
 
@@ -519,15 +546,15 @@ class FindReplace extends Base
      */
     private function facetOptions(int $searchId): array
     {
-        $registry = Factory::service('Registry', Constants::MODULE_SLUG);
-        $labels = $registry instanceof Registry ? $registry->facets() : ['resolver' => 'Resolver'];
+        $registry = $this->registry();
+        $labels = $registry->facets();
         $counts = $this->resultModel()->countsByFacet($searchId);
         $options = [];
 
         foreach ($labels as $key => $label) {
             $options[$key] = [
                 'label' => $label,
-                'values' => $counts[$key] ?? [],
+                'values' => $this->acceptedCounts($registry, $key, $counts[$key] ?? []),
             ];
         }
 
@@ -535,12 +562,43 @@ class FindReplace extends Base
             if (!isset($options[$key])) {
                 $options[$key] = [
                     'label' => $key,
-                    'values' => $values,
+                    'values' => $this->acceptedCounts($registry, $key, $values),
                 ];
             }
         }
 
         return $options;
+    }
+
+    /**
+     * @param array<string, int> $counts
+     *
+     * @return array<string, int>
+     */
+    private function acceptedCounts(Registry $registry, string $key, array $counts): array
+    {
+        $accepted = [];
+
+        foreach ($counts as $value => $count) {
+            $value = (string) $value;
+
+            if ($registry->accepts($key, $value)) {
+                $accepted[$value] = $count;
+            }
+        }
+
+        return $accepted;
+    }
+
+    private function registry(): Registry
+    {
+        $registry = Factory::service('Registry', Constants::MODULE_SLUG);
+
+        if (!$registry instanceof Registry) {
+            throw new \RuntimeException('Find-replace registry is not available');
+        }
+
+        return $registry;
     }
 
     /**
