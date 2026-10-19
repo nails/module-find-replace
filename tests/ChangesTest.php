@@ -23,6 +23,11 @@ class ChangesTest extends DatabaseTestCase
         $this->registerTable('nails_find_replace_change');
     }
 
+    public function test_the_model_does_not_auto_set_timestamps(): void
+    {
+        $this->assertFalse($this->model()->isAutoSetTimestamps());
+    }
+
     public function test_migration_creates_the_change_table(): void
     {
         $columns = [];

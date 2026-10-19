@@ -18,16 +18,14 @@ class Change extends Base
     const DESTRUCTIVE_DELETE = true;
 
     /**
+     * Created is written on the PDO connection inside the update transaction.
+     */
+    const AUTO_SET_TIMESTAMP = false;
+
+    /**
      * @var string|null
      */
     protected $tableLabelColumn = null;
-
-    /**
-     * Rows are inserted on the PDO connection that is already inside the update transaction.
-     *
-     * @var bool|null
-     */
-    protected $tableAutoSetTimestamps = false;
 
     public function record(
         PDODatabase $database,
