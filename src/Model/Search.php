@@ -20,6 +20,8 @@ class Search extends Base
 
     const AUTO_SET_USER = false;
 
+    const AUTO_SET_TIMESTAMP = false;
+
     const STATUS_PENDING = 'PENDING';
 
     const STATUS_RUNNING = 'RUNNING';
@@ -27,11 +29,6 @@ class Search extends Base
     const STATUS_COMPLETE = 'COMPLETE';
 
     const STATUS_FAILED = 'FAILED';
-
-    /**
-     * @var bool|null
-     */
-    protected $tableAutoSetTimestamps = false;
 
     /**
      * @var string|null

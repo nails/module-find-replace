@@ -27,6 +27,9 @@ class Change extends Base
      */
     protected $tableLabelColumn = null;
 
+    /**
+     * Rows are inserted on the PDO connection that is already inside the update transaction.
+     */
     public function record(
         PDODatabase $database,
         Run $run,

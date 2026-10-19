@@ -21,10 +21,7 @@ class Result extends Base
 
     const AUTO_SET_USER = false;
 
-    /**
-     * @var bool|null
-     */
-    protected $tableAutoSetTimestamps = false;
+    const AUTO_SET_TIMESTAMP = false;
 
     /**
      * @var string|null
