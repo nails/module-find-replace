@@ -287,10 +287,26 @@ class Engine
                 $reason = $location->getReadOnlyReason();
             }
 
-            $hits[] = $prototype->withMatch($match, $readOnly, $reason);
+            $hits[] = $this->accepted($prototype->withMatch($match, $readOnly, $reason));
         }
 
         return $hits;
+    }
+
+    /**
+     * Drops facet values a closed facet does not declare.
+     */
+    private function accepted(Hit $hit): Hit
+    {
+        $facets = [];
+
+        foreach ($hit->getFacets() as $key => $value) {
+            if ($this->schema->registry()->accepts($key, $value)) {
+                $facets[$key] = $value;
+            }
+        }
+
+        return $hit->withFacets($facets);
     }
 
     private function replaceHit(

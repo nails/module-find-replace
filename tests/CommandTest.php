@@ -238,6 +238,22 @@ class CommandTest extends DatabaseTestCase
         ]);
         $this->assertStringContainsString('Found 0 match', $anded->getDisplay());
 
+        $archived = $this->executeCommand(new Search(), [
+            'term' => 'Alpha',
+            '--table' => [$table],
+            '--facet' => ['status:ARCHIVED'],
+        ]);
+        $this->assertNotSame(0, $archived->getStatusCode());
+        $this->assertStringContainsString('status must be one of DRAFT, PUBLISHED', $archived->getDisplay());
+
+        $language = $this->executeCommand(new Search(), [
+            'term' => 'Alpha',
+            '--table' => [$table],
+            '--facet' => ['language:FR'],
+        ]);
+        $this->assertNotSame(0, $language->getStatusCode());
+        $this->assertStringContainsString('language must be one of CN, DE, EN, JP', $language->getDisplay());
+
         $resolved = $this->executeCommand(new Search(), [
             'term' => 'Alpha',
             '--table' => [$table, $other],

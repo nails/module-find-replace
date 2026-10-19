@@ -152,6 +152,32 @@ class RegistryTest extends TestCase
         $this->assertNull($registry->facetValues()['status']);
     }
 
+    public function test_closed_values_reject_anything_else(): void
+    {
+        $registry = new Registry([], [new StatusResolver()]);
+
+        $this->assertTrue($registry->accepts('status', 'PUBLISHED'));
+        $this->assertTrue($registry->accepts('status', 'DRAFT'));
+        $this->assertFalse($registry->accepts('status', 'ARCHIVED'));
+        $this->assertSame('status must be one of DRAFT, PUBLISHED', $registry->rejection('status'));
+        $this->assertTrue($registry->accepts('language', 'FR'));
+        $this->assertTrue($registry->accepts('resolver', 'Page'));
+    }
+
+    public function test_app_languages_and_status_are_closed(): void
+    {
+        $registry = new Registry();
+        $languages = $registry->facetValues()['language'] ?? null;
+
+        $this->assertSame(['DRAFT', 'PUBLISHED'], $registry->facetValues()['status'] ?? null);
+        $this->assertSame(['CN', 'DE', 'EN', 'JP'], $languages);
+        $this->assertFalse($registry->accepts('status', 'ARCHIVED'));
+        $this->assertFalse($registry->accepts('language', 'en'));
+        $this->assertFalse($registry->accepts('language', 'FR'));
+        $this->assertTrue($registry->accepts('language', 'EN'));
+        $this->assertTrue($registry->accepts('resolver', 'Unresolved'));
+    }
+
     public function test_blank_facet_value_throws(): void
     {
         $this->expectException(\InvalidArgumentException::class);

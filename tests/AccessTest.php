@@ -81,6 +81,26 @@ class AccessTest extends AdminDatabaseTestCase
         $this->assertSame([], $this->changes()->forUser($this->pdo(), $other));
     }
 
+    public function test_closed_facet_values_are_not_stored(): void
+    {
+        $id = $this->searches()->open(11, 'alpha', 'beta', true, [], []);
+        $this->results()->store($id, [
+            $this->hit('1', [
+                'resolver' => 'Page',
+                'status' => 'ARCHIVED',
+                'language' => 'FR',
+                'kind' => 'page',
+            ]),
+        ], true);
+
+        $counts = $this->results()->countsByFacet($id);
+
+        $this->assertSame(['Page' => 1], $counts['resolver'] ?? null);
+        $this->assertSame(['page' => 1], $counts['kind'] ?? null);
+        $this->assertArrayNotHasKey('status', $counts);
+        $this->assertArrayNotHasKey('language', $counts);
+    }
+
     /**
      * @param array<string, string> $facets
      */

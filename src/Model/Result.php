@@ -5,11 +5,13 @@ namespace Nails\FindReplace\Model;
 use Nails\Common\Model\Base;
 use Nails\Common\Service\PDODatabase;
 use Nails\Factory;
+use Nails\FindReplace\Constants;
 use Nails\FindReplace\Factory\Action;
 use Nails\FindReplace\Factory\Hit;
 use Nails\FindReplace\Factory\Matched;
 use Nails\FindReplace\Factory\StoredResult;
 use Nails\FindReplace\Reason;
+use Nails\FindReplace\Service\Registry;
 
 class Result extends Base
 {
@@ -341,7 +343,7 @@ class Result extends Base
         $resultId = (int) $this->database()->lastInsertId();
 
         foreach ($hit->getFacets() as $facet => $value) {
-            if ($facet === '' || $value === '') {
+            if ($facet === '' || $value === '' || !$this->registry()->accepts($facet, $value)) {
                 continue;
             }
 
@@ -600,6 +602,17 @@ class Result extends Base
     private function flag(mixed $value): bool
     {
         return $value === true || $value === 1 || $value === '1';
+    }
+
+    private function registry(): Registry
+    {
+        $registry = Factory::service('Registry', Constants::MODULE_SLUG);
+
+        if (!$registry instanceof Registry) {
+            throw new \RuntimeException('Find-replace registry is not available');
+        }
+
+        return $registry;
     }
 
     private function database(): PDODatabase

@@ -104,6 +104,31 @@ class Registry
     }
 
     /**
+     * A closed facet accepts only its declared values. An open or undeclared facet accepts any string.
+     */
+    public function accepts(string $key, string $value): bool
+    {
+        if ($key === '' || $value === '') {
+            return false;
+        }
+
+        $allowed = $this->facetValues()[$key] ?? null;
+
+        if ($allowed === null) {
+            return true;
+        }
+
+        return in_array($value, $allowed, true);
+    }
+
+    public function rejection(string $key): string
+    {
+        $allowed = $this->facetValues()[$key] ?? [];
+
+        return $key . ' must be one of ' . implode(', ', $allowed);
+    }
+
+    /**
      * @return array<string, array{label: string, values: list<string>|null}>
      */
     private function catalogue(): array

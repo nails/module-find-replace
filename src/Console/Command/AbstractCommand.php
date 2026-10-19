@@ -13,6 +13,7 @@ use Nails\FindReplace\Factory\Query;
 use Nails\FindReplace\Model\Change;
 use Nails\FindReplace\Scope;
 use Nails\FindReplace\Service\Engine;
+use Nails\FindReplace\Service\Registry;
 use Nails\FindReplace\Service\Schema;
 use Symfony\Component\Console\Helper\Helper;
 use Symfony\Component\Console\Helper\QuestionHelper;
@@ -649,9 +650,24 @@ abstract class AbstractCommand extends Base
                 throw new \InvalidArgumentException('--facet must be key:value');
             }
 
+            if (!$this->registry()->accepts($key, $facetValue)) {
+                throw new \InvalidArgumentException($this->registry()->rejection($key));
+            }
+
             $facets[] = [$key, $facetValue];
         }
 
         return $facets;
+    }
+
+    private function registry(): Registry
+    {
+        $registry = Factory::service('Registry', Constants::MODULE_SLUG);
+
+        if (!$registry instanceof Registry) {
+            throw new \RuntimeException('Find-replace registry is not available');
+        }
+
+        return $registry;
     }
 }

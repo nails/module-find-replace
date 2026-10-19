@@ -96,4 +96,23 @@ class Hit
             $readOnlyReason,
         );
     }
+
+    /**
+     * @param array<string, string> $facets
+     */
+    public function withFacets(array $facets): self
+    {
+        return new self(
+            $this->table,
+            $this->id,
+            $this->entityLabel,
+            $this->entityId,
+            $this->title,
+            $this->actions,
+            $facets,
+            $this->matched,
+            $this->readOnly,
+            $this->readOnlyReason,
+        );
+    }
 }
