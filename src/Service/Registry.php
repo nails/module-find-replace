@@ -111,13 +111,7 @@ class Registry
                     continue;
                 }
 
-                $reflection = new \ReflectionClass($class);
-
-                if (!$reflection->isInstantiable()) {
-                    continue;
-                }
-
-                $instance = $reflection->newInstance();
+                $instance = (new \ReflectionClass($class))->newInstance();
 
                 if (!$instance instanceof $interface) {
                     continue;
