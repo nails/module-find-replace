@@ -6,6 +6,7 @@ require_once __DIR__ . '/DatabaseTestCase.php';
 
 use Nails\Factory;
 use Nails\FindReplace\Constants;
+use Nails\FindReplace\Console\Command\Fields;
 use Nails\FindReplace\Console\Command\Replace;
 use Nails\FindReplace\Console\Command\Revert;
 use Nails\FindReplace\Console\Command\Search;
@@ -38,6 +39,34 @@ class CommandTest extends DatabaseTestCase
                 unlink($file);
             }
         }
+    }
+
+    public function test_fields_lists_discovered_facets_and_tables(): void
+    {
+        $table = 'fr_cli_fields';
+        $this->createTable($table, '
+            `id` INT NOT NULL AUTO_INCREMENT,
+            `body` VARCHAR(80) NULL,
+            `slug` VARCHAR(80) NULL,
+            `token` VARCHAR(80) NULL,
+            PRIMARY KEY (`id`)
+        ');
+
+        $output = $this->executeCommand(new Fields(), []);
+        $display = $output->getDisplay();
+
+        $this->assertSame(0, $output->getStatusCode());
+        $this->assertStringContainsString('Facets:', $display);
+        $this->assertStringContainsString('resolver', $display);
+        $this->assertStringContainsString('Resolver', $display);
+        $this->assertStringContainsString('Resolvers:', $display);
+        $this->assertStringContainsString('Tables:', $display);
+        $this->assertMatchesRegularExpression('/' . $table . '\s+\|\s+body\s+\|\s+searchable\s+\|/', $display);
+        $this->assertMatchesRegularExpression(
+            '/' . $table . '\s+\|\s+slug\s+\|\s+read-only\s+\|\s+' . preg_quote(Reason::READ_ONLY, '/') . '/',
+            $display,
+        );
+        $this->assertDoesNotMatchRegularExpression('/' . $table . '\s+\|\s+token\s+\|/', $display);
     }
 
     public function test_search_prints_a_table_and_writes_csv_and_json(): void
