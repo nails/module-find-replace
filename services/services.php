@@ -5,6 +5,7 @@ use Nails\Factory;
 use Nails\FindReplace\Constants;
 use Nails\FindReplace\Factory\Query;
 use Nails\FindReplace\Factory\Term;
+use Nails\FindReplace\Model;
 use Nails\FindReplace\Service\Engine;
 use Nails\FindReplace\Service\Registry;
 use Nails\FindReplace\Service\Schema;
@@ -33,6 +34,20 @@ return [
             }
 
             return new Engine($schema, $database);
+        },
+    ],
+    'models' => [
+        'Search' => function (): Model\Search {
+            return new Model\Search();
+        },
+        'Result' => function (): Model\Result {
+            return new Model\Result();
+        },
+        'ResultFacet' => function (): Model\Result\Facet {
+            return new Model\Result\Facet();
+        },
+        'Change' => function (): Model\Change {
+            return new Model\Change();
         },
     ],
     'factories' => [
