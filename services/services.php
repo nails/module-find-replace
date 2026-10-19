@@ -14,9 +14,9 @@ return [
         'Registry' => function (): Registry {
             return new Registry();
         },
-        'Schema' => function (): Schema {
-            $database = Factory::service('PDODatabase');
-            $registry = Factory::service('Registry', Constants::MODULE_SLUG);
+        'Schema' => function (?PDODatabase $database = null, ?Registry $registry = null): Schema {
+            $database = $database ?? Factory::service('PDODatabase');
+            $registry = $registry ?? Factory::service('Registry', Constants::MODULE_SLUG);
 
             if (!$database instanceof PDODatabase || !$registry instanceof Registry) {
                 throw new \RuntimeException('Find-replace schema dependencies are not available');
@@ -24,9 +24,9 @@ return [
 
             return new Schema($database, $registry);
         },
-        'Engine' => function (): Engine {
-            $database = Factory::service('PDODatabase');
-            $schema = Factory::service('Schema', Constants::MODULE_SLUG);
+        'Engine' => function (?PDODatabase $database = null, ?Schema $schema = null): Engine {
+            $database = $database ?? Factory::service('PDODatabase');
+            $schema = $schema ?? Factory::service('Schema', Constants::MODULE_SLUG);
 
             if (!$database instanceof PDODatabase || !$schema instanceof Schema) {
                 throw new \RuntimeException('Find-replace engine dependencies are not available');
