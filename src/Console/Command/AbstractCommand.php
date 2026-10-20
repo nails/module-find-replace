@@ -206,6 +206,11 @@ abstract class AbstractCommand extends Base
             $output->getFormatter(),
         );
         $table = new Table($buffer);
+        // Colour tags become ANSI bytes. Terminals that count those bytes wrap
+        // the header while the body still fits, so the last heading drops a line.
+        $style = clone Table::getStyleDefinition('default');
+        $style->setCellHeaderFormat('%s');
+        $table->setStyle($style);
         $table->setHeaders($headers);
         $table->setRows($rows);
         $this->fit($table, $headers, $rows);

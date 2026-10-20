@@ -99,7 +99,7 @@ class CommandTest extends DatabaseTestCase
             $output = $this->executeCommand(new Search(), [
                 'term' => 'alpha',
                 '--table' => [$table],
-            ]);
+            ], decorated: true);
         } finally {
             putenv('COLUMNS');
         }
@@ -115,7 +115,9 @@ class CommandTest extends DatabaseTestCase
         $this->assertDoesNotMatchRegularExpression('/z{40}/', $display);
 
         foreach (explode("\n", $display) as $line) {
-            $this->assertLessThanOrEqual(72, mb_strlen(rtrim($line, "\r")));
+            $line = rtrim($line, "\r");
+            // Byte length, not just visible width: colour codes must not push the header over.
+            $this->assertLessThanOrEqual(72, strlen($line));
         }
     }
 
@@ -489,6 +491,7 @@ class CommandTest extends DatabaseTestCase
         bool $interactive = false,
         array $answers = [],
         int $verbosity = OutputInterface::VERBOSITY_NORMAL,
+        bool $decorated = false,
     ): CommandTester {
         Factory::destroyService('Schema', Constants::MODULE_SLUG);
         Factory::destroyService('Engine', Constants::MODULE_SLUG);
@@ -513,6 +516,7 @@ class CommandTest extends DatabaseTestCase
         $tester->execute($input, [
             'interactive' => $interactive,
             'verbosity' => $verbosity,
+            'decorated' => $decorated,
         ]);
 
         return $tester;
