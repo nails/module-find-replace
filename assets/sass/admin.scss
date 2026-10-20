@@ -28,6 +28,51 @@
     margin-top: 2.5rem;
 }
 
+.find-replace-detail__term {
+    font-size: 1.25rem;
+}
+
+.find-replace-detail__arrow {
+    margin: 0 0.35rem;
+    color: #6c757d;
+}
+
+.find-replace-detail__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.25rem;
+}
+
+.find-replace-detail__scope {
+    color: #6c757d;
+}
+
+.find-replace-meter-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.find-replace-meter {
+    flex: 1;
+    height: 0.5rem;
+    overflow: hidden;
+    border-radius: 1rem;
+    background: #e9ecef;
+}
+
+.find-replace-meter > span {
+    display: block;
+    height: 100%;
+    background: #337ab7;
+}
+
+.find-replace-progress {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
 .find-replace-error {
     margin-top: 0.35rem;
     color: #a94442;

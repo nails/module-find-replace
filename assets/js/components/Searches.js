@@ -1,3 +1,5 @@
+import {badge} from './Status.js';
+
 class Searches {
     constructor() {
         this.root = document.getElementById('find-replace');
@@ -139,7 +141,7 @@ class Searches {
 
         const status = row.querySelector('.find-replace-status');
         status.textContent = '';
-        status.append(document.createTextNode(item.status));
+        status.append(badge(item.status));
 
         if (item.error) {
             const error = document.createElement('div');

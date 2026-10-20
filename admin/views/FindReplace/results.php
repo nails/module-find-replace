@@ -21,44 +21,103 @@ if ($facets !== []) {
     $query['facet'] = $facets;
 }
 
-$resultsUrl = FindReplace::url('results') . '?' . http_build_query($query);
 $exportUrl = FindReplace::url('export') . '?' . http_build_query($query);
 $filtered = $facets !== [];
+$badges = [
+    Search::STATUS_PENDING => ['badge-warning', 'Pending'],
+    Search::STATUS_RUNNING => ['badge-info', 'Running'],
+    Search::STATUS_COMPLETE => ['badge-success', 'Complete'],
+    Search::STATUS_FAILED => ['badge-danger', 'Failed'],
+];
+[$badgeClass, $badgeLabel] = $badges[$search->status()] ?? ['badge-secondary', $search->status()];
+$scanned = $search->tablesScanned();
+$totalTables = $search->tablesTotal();
+$percent = $totalTables > 0 ? (int) floor(($scanned / $totalTables) * 100) : 0;
+$running = $search->status() === Search::STATUS_RUNNING;
 
 ?>
-<p>
-    <strong><?=htmlspecialchars($search->term())?></strong>
+<fieldset class="find-replace-detail"<?php
+
+if ($search->isOpen()) {
+    ?> data-find-replace-status data-url="<?=htmlspecialchars(siteUrl('api/find-replace/search/' . $id))?>"<?php
+}
+
+?>>
+    <legend>Search</legend>
+    <p class="find-replace-detail__term">
+        <strong><?=htmlspecialchars($search->term())?></strong>
+        <?php
+
+        if ($search->replacement() !== '') {
+            ?>
+            <span class="find-replace-detail__arrow" aria-hidden="true">→</span>
+            <strong><?=htmlspecialchars($search->replacement())?></strong>
+            <?php
+        }
+
+        ?>
+    </p>
+    <p class="find-replace-detail__meta">
+        <span class="badge <?=htmlspecialchars($badgeClass)?>" data-find-replace-badge><?=htmlspecialchars($badgeLabel)?></span>
+        <span><?=$search->isCaseSensitive() ? 'Case sensitive' : 'Ignores case'?></span>
+        <?php
+
+        if ($search->lastRunLabel() !== '') {
+            ?>
+            <span>Last run <?=htmlspecialchars($search->lastRunLabel())?></span>
+            <?php
+        }
+
+        if ($search->status() === Search::STATUS_COMPLETE) {
+            ?>
+            <span><?=htmlspecialchars((string) $search->resultCount())?> result<?=$search->resultCount() === 1 ? '' : 's'?></span>
+            <?php
+        }
+
+        ?>
+    </p>
     <?php
 
-    if ($search->replacement() !== '') {
+    if ($search->includeTables() !== []) {
         ?>
-        → <strong><?=htmlspecialchars($search->replacement())?></strong>
+        <p class="find-replace-detail__scope">Limited to <?=htmlspecialchars(implode(', ', $search->includeTables()))?></p>
+        <?php
+    }
+
+    if ($search->excludeTables() !== []) {
+        ?>
+        <p class="find-replace-detail__scope">Excluding <?=htmlspecialchars(implode(', ', $search->excludeTables()))?></p>
+        <?php
+    }
+
+    if ($search->isOpen()) {
+        ?>
+        <p data-find-replace-message>
+            <?=$running ? 'Scanning tables.' : 'Waiting for a worker to start this search.'?>
+        </p>
+        <p class="find-replace-meter-row" data-find-replace-meter<?=$running ? '' : ' hidden'?>>
+            <span class="find-replace-meter" role="progressbar" aria-valuemin="0" aria-valuemax="<?=$totalTables?>" aria-valuenow="<?=$scanned?>">
+                <span data-find-replace-bar style="width: <?=$percent?>%"></span>
+            </span>
+            <span class="find-replace-progress"><?=$scanned?> / <?=$totalTables?></span>
+        </p>
+        <?php
+    }
+
+    if ($search->status() === Search::STATUS_FAILED) {
+        $failure = $search->errorMessage() !== '' ? $search->errorMessage() : 'The search failed.';
+        ?>
+        <div class="alert alert-danger"><?=htmlspecialchars($failure)?></div>
         <?php
     }
 
     ?>
-    <span class="text-muted"><?=htmlspecialchars($search->status())?></span>
-</p>
-
+</fieldset>
 <?php
 
-if ($search->isOpen()) {
-    ?>
-    <p data-find-replace-status data-url="<?=htmlspecialchars(siteUrl('api/find-replace/search/' . $id))?>">
-        Scanning tables:
-        <span class="find-replace-progress">
-            <?=htmlspecialchars((string) $search->tablesScanned())?>
-            /
-            <?=htmlspecialchars((string) $search->tablesTotal())?>
-        </span>
-    </p>
-    <?php
-}
-
 if ($search->status() === Search::STATUS_FAILED) {
+    echo form_open(FindReplace::url('rerun'));
     ?>
-    <div class="alert alert-danger"><?=htmlspecialchars($search->errorMessage())?></div>
-    <?=form_open(FindReplace::url('rerun'))?>
     <input type="hidden" name="id" value="<?=$id?>">
     <button type="submit" class="btn btn-primary">Run again</button>
     <?=form_close()?>
@@ -68,13 +127,12 @@ if ($search->status() === Search::STATUS_FAILED) {
 if ($search->status() === Search::STATUS_COMPLETE) {
     ?>
     <p>
-        <?=htmlspecialchars((string) $total)?>
-        result<?=$total === 1 ? '' : 's'?>
         <?php
 
         if ($filtered) {
             ?>
-            with the current filters.
+            Showing <?=htmlspecialchars((string) $total)?>
+            of <?=htmlspecialchars((string) $search->resultCount())?>.
             <a href="<?=htmlspecialchars(FindReplace::url('results') . '?id=' . $id)?>">Clear filters</a>
             <?php
         }
@@ -135,14 +193,14 @@ if ($search->status() === Search::STATUS_COMPLETE) {
 
     ?>
     <table class="table table-striped table-hover find-replace-results">
-        <thead>
+        <thead class="table-dark">
             <tr>
                 <th><input type="checkbox" class="js-toggle-all" aria-label="Select all"></th>
                 <th>Record</th>
                 <th>Column</th>
                 <th>Match</th>
                 <th>Replacement</th>
-                <th></th>
+                <th class="actions"></th>
             </tr>
         </thead>
         <tbody>
