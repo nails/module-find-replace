@@ -4,6 +4,7 @@ namespace Nails\FindReplace\Admin\Controller;
 
 use Nails\Admin\Controller\Base;
 use Nails\Admin\Factory\Nav;
+use Nails\Admin\Helper;
 use Nails\Common\Service\Input;
 use Nails\Common\Service\Output;
 use Nails\Common\Service\PDODatabase;
@@ -130,6 +131,20 @@ class FindReplace extends Base
         }
 
         $pages = max(1, (int) ceil($total / self::PER_PAGE));
+
+        if ($search->status() === Search::STATUS_COMPLETE) {
+            $exportQuery = ['id' => (int) $search->id];
+
+            if ($facets !== []) {
+                $exportQuery['facet'] = $facets;
+            }
+
+            Helper::addHeaderButton(
+                self::url('export') . '?' . http_build_query($exportQuery),
+                'Export CSV',
+                'default',
+            );
+        }
 
         $this
             ->addBreadcrumb('Utilities')

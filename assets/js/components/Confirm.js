@@ -1,7 +1,8 @@
 class Confirm {
     constructor(adminController) {
+        this.adminController = adminController;
         this.pendingScope = 'selected';
-        this.dialog = this.createDialog();
+        this.modal = null;
 
         adminController.onRefreshUi(() => {
             this.bind();
@@ -10,69 +11,28 @@ class Confirm {
         this.bind();
     }
 
-    createDialog() {
-        const dialog = document.createElement('div');
-        dialog.className = 'find-replace-confirm';
-        dialog.hidden = true;
+    dialog() {
+        if (this.modal) {
+            return this.modal;
+        }
 
-        const panel = document.createElement('div');
-        panel.className = 'find-replace-confirm__panel';
-        panel.setAttribute('role', 'dialog');
-        panel.setAttribute('aria-modal', 'true');
-        panel.setAttribute('aria-labelledby', 'find-replace-confirm-title');
+        this.modal = this.adminController.getInstance('Modal').create();
+        this.modal
+            .setTitle('Replace text?')
+            .addAction('Replace', ['btn-danger'], () => {
+                this.apply();
+            })
+            .addAction('Cancel', ['btn-default'], () => {
+                this.modal.hide();
+            });
 
-        const title = document.createElement('h2');
-        title.id = 'find-replace-confirm-title';
-        title.className = 'find-replace-confirm__title';
-        title.textContent = 'Replace text?';
-
-        this.body = document.createElement('p');
-        this.body.className = 'find-replace-confirm__body';
-
-        const actions = document.createElement('div');
-        actions.className = 'find-replace-confirm__actions';
-
-        const cancel = document.createElement('button');
-        cancel.type = 'button';
-        cancel.className = 'btn btn-default';
-        cancel.textContent = 'Cancel';
-        cancel.addEventListener('click', () => {
-            this.hide();
-        });
-
-        const replace = document.createElement('button');
-        replace.type = 'button';
-        replace.className = 'btn btn-danger';
-        replace.textContent = 'Replace';
-        replace.addEventListener('click', () => {
-            this.apply();
-        });
-
-        actions.append(cancel, replace);
-        panel.append(title, this.body, actions);
-        dialog.append(panel);
-        dialog.addEventListener('click', (event) => {
-            if (event.target === dialog) {
-                this.hide();
-            }
-        });
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && !dialog.hidden) {
-                this.hide();
-            }
-        });
-        document.body.append(dialog);
-
-        return dialog;
+        return this.modal;
     }
 
     show(message) {
-        this.body.textContent = message;
-        this.dialog.hidden = false;
-    }
-
-    hide() {
-        this.dialog.hidden = true;
+        const body = document.createElement('p');
+        body.textContent = message;
+        this.dialog().setBody(body).show();
     }
 
     apply() {

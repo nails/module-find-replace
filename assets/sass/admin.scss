@@ -41,7 +41,37 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem 1.25rem;
+    gap: 0.5rem 0.75rem;
+}
+
+.find-replace-detail__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1.5rem;
+}
+
+.find-replace-detail__fact {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.find-replace-detail__fact + .find-replace-detail__fact {
+    padding-left: 1.5rem;
+    border-left: 1px solid #dee2e6;
+}
+
+.find-replace-detail__fact-label {
+    color: #6c757d;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.find-replace-detail__fact-value {
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
 }
 
 .find-replace-detail__scope {
@@ -76,42 +106,4 @@
 .find-replace-error {
     margin-top: 0.35rem;
     color: #a94442;
-}
-
-.find-replace-confirm {
-    position: fixed;
-    z-index: 1100;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.5);
-
-    &[hidden] {
-        display: none;
-    }
-}
-
-.find-replace-confirm__panel {
-    width: 90%;
-    max-width: 32rem;
-    padding: 1.25rem;
-    background: #fff;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.find-replace-confirm__title {
-    margin: 0 0 0.75rem;
-    font-size: 1.125rem;
-}
-
-.find-replace-confirm__body {
-    margin: 0 0 1rem;
-}
-
-.find-replace-confirm__actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
 }

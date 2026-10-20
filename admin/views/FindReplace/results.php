@@ -21,7 +21,6 @@ if ($facets !== []) {
     $query['facet'] = $facets;
 }
 
-$exportUrl = FindReplace::url('export') . '?' . http_build_query($query);
 $filtered = $facets !== [];
 $badges = [
     Search::STATUS_PENDING => ['badge-warning', 'Pending'],
@@ -59,23 +58,42 @@ if ($search->isOpen()) {
     </p>
     <p class="find-replace-detail__meta">
         <span class="badge <?=htmlspecialchars($badgeClass)?>" data-find-replace-badge><?=htmlspecialchars($badgeLabel)?></span>
-        <span><?=$search->isCaseSensitive() ? 'Case sensitive' : 'Ignores case'?></span>
-        <?php
-
-        if ($search->lastRunLabel() !== '') {
-            ?>
-            <span>Last run <?=htmlspecialchars($search->lastRunLabel())?></span>
-            <?php
-        }
-
-        if ($search->status() === Search::STATUS_COMPLETE) {
-            ?>
-            <span><?=htmlspecialchars((string) $search->resultCount())?> result<?=$search->resultCount() === 1 ? '' : 's'?></span>
-            <?php
-        }
-
-        ?>
+        <span class="badge">Case sensitive: <?=$search->isCaseSensitive() ? 'yes' : 'no'?></span>
     </p>
+    <?php
+
+    $showLastRun = $search->lastRunLabel() !== '';
+    $showResults = $search->status() === Search::STATUS_COMPLETE;
+
+    if ($showLastRun || $showResults) {
+        ?>
+        <p class="find-replace-detail__facts">
+            <?php
+
+            if ($showLastRun) {
+                ?>
+                <span class="find-replace-detail__fact">
+                    <span class="find-replace-detail__fact-label">Last run</span>
+                    <span class="find-replace-detail__fact-value"><?=htmlspecialchars($search->lastRunLabel())?></span>
+                </span>
+                <?php
+            }
+
+            if ($showResults) {
+                ?>
+                <span class="find-replace-detail__fact">
+                    <span class="find-replace-detail__fact-label">Results</span>
+                    <span class="find-replace-detail__fact-value"><?=htmlspecialchars((string) $search->resultCount())?></span>
+                </span>
+                <?php
+            }
+
+            ?>
+        </p>
+        <?php
+    }
+
+    ?>
     <?php
 
     if ($search->includeTables() !== []) {
@@ -125,60 +143,75 @@ if ($search->status() === Search::STATUS_FAILED) {
 }
 
 if ($search->status() === Search::STATUS_COMPLETE) {
-    ?>
-    <p>
-        <?php
+    $hasFilters = false;
 
-        if ($filtered) {
-            ?>
-            Showing <?=htmlspecialchars((string) $total)?>
-            of <?=htmlspecialchars((string) $search->resultCount())?>.
-            <a href="<?=htmlspecialchars(FindReplace::url('results') . '?id=' . $id)?>">Clear filters</a>
-            <?php
+    foreach ($facetOptions as $option) {
+        if ($option['values'] !== []) {
+            $hasFilters = true;
+            break;
         }
+    }
 
+    if ($hasFilters) {
         ?>
-        <a class="btn btn-sm btn-default" href="<?=htmlspecialchars($exportUrl)?>">Export CSV</a>
-    </p>
-    <?=form_open(FindReplace::url('results'), ['method' => 'GET'])?>
-    <input type="hidden" name="id" value="<?=$id?>">
-    <fieldset>
-        <legend>Filters</legend>
-        <?php
+        <div class="search clearfix">
+            <?=form_open(FindReplace::url('results'), ['method' => 'GET'])?>
+            <input type="hidden" name="id" value="<?=$id?>">
+            <?php
 
-        foreach ($facetOptions as $key => $option) {
-            if ($option['values'] === []) {
-                continue;
+            foreach ($facetOptions as $key => $option) {
+                if ($option['values'] === []) {
+                    continue;
+                }
+
+                ?>
+                <span class="filterGroup dropdown">
+                    <span class="filterLabel"><?=htmlspecialchars($option['label'])?></span>
+                    <span class="filterDropdown">
+                        <select name="facet[<?=htmlspecialchars($key)?>]" class="select2">
+                            <option value="">Any</option>
+                            <?php
+
+                            foreach ($option['values'] as $value => $count) {
+                                $selected = ($facets[$key] ?? '') === (string) $value ? ' selected' : '';
+                                ?>
+                                <option value="<?=htmlspecialchars((string) $value)?>"<?=$selected?>>
+                                    <?=htmlspecialchars((string) $value)?> (<?=htmlspecialchars((string) $count)?>)
+                                </option>
+                                <?php
+                            }
+
+                            ?>
+                        </select>
+                    </span>
+                </span>
+                <?php
             }
 
             ?>
-            <label>
-                <?=htmlspecialchars($option['label'])?>
-                <select name="facet[<?=htmlspecialchars($key)?>]">
-                    <option value="">Any</option>
-                    <?php
-
-                    foreach ($option['values'] as $value => $count) {
-                        $selected = ($facets[$key] ?? '') === (string) $value ? ' selected' : '';
-                        ?>
-                        <option value="<?=htmlspecialchars((string) $value)?>"<?=$selected?>>
-                            <?=htmlspecialchars((string) $value)?> (<?=htmlspecialchars((string) $count)?>)
-                        </option>
-                        <?php
-                    }
-
-                    ?>
-                </select>
-            </label>
+            <hr>
             <?php
-        }
 
-        ?>
-        <button type="submit" class="btn btn-default">Apply filters</button>
-    </fieldset>
-    <?=form_close()?>
+            if ($filtered) {
+                ?>
+                <span class="filterText">
+                    Showing <?=htmlspecialchars((string) $total)?>
+                    of <?=htmlspecialchars((string) $search->resultCount())?>.
+                </span>
+                <?php
+            }
 
-    <?=form_open(FindReplace::url('replace'), [
+            ?>
+            <div class="actions">
+                <button type="submit" class="btn btn-xs btn-primary">Search</button>
+                <?=anchor(FindReplace::url('results') . '?id=' . $id, 'Reset', 'class="btn btn-xs btn-default"')?>
+            </div>
+            <?=form_close()?>
+        </div>
+        <?php
+    }
+
+    echo form_open(FindReplace::url('replace'), [
         'id' => 'find-replace-results',
         'data-filtered' => $filtered ? '1' : '0',
     ])?>
