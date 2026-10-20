@@ -48,14 +48,14 @@ $apiUrl = siteUrl('api/find-replace/search');
     <fieldset class="find-replace-searches">
         <legend>My searches</legend>
         <table class="table table-striped table-hover">
-            <thead>
+            <thead class="table-dark">
                 <tr>
                     <th>Term</th>
                     <th>Status</th>
                     <th>Progress</th>
                     <th>Results</th>
                     <th>Last run</th>
-                    <th></th>
+                    <th class="actions"></th>
                 </tr>
             </thead>
             <tbody id="find-replace-searches">
