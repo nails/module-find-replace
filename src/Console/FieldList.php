@@ -40,8 +40,7 @@ class FieldList
         }
 
         foreach ($facets as $key => $facet) {
-            $text .= "\n  <info>" . $this->plain($key) . "</info>\n";
-            $text .= '    ' . $this->plain($facet['label']) . "\n";
+            $text .= "\n  <info>" . $this->plain($facet['label']) . '</info> (key: ' . $this->plain($key) . ")\n";
             $text .= $this->values($facet['values']);
         }
 

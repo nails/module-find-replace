@@ -27,8 +27,8 @@ class FieldListTest extends TestCase
             80,
         );
 
-        $this->assertStringContainsString("<info>resolver</info>\n    Resolver\n    Accepts any value", $text);
-        $this->assertStringContainsString("<info>status</info>\n    Status\n    DRAFT\n    PUBLISHED", $text);
+        $this->assertStringContainsString("<info>Resolver</info> (key: resolver)\n    Accepts any value", $text);
+        $this->assertStringContainsString("<info>Status</info> (key: status)\n    DRAFT\n    PUBLISHED", $text);
         $this->assertStringContainsString("<info>Article</info>\n    app_article\n    app_article_localised", $text);
         $this->assertStringNotContainsString('App\\FindReplace\\Resolver\\Article', $text);
     }

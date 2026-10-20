@@ -58,7 +58,7 @@ class CommandTest extends DatabaseTestCase
 
         $this->assertSame(0, $output->getStatusCode());
         $this->assertStringContainsString('Facets:', $display);
-        $this->assertStringContainsString("resolver\n    Resolver\n    Accepts any value", $display);
+        $this->assertStringContainsString("Resolver (key: resolver)\n    Accepts any value", $display);
         $this->assertStringContainsString('Pass as --facet=key:value', $display);
         $this->assertStringContainsString('Resolvers:', $display);
         $this->assertStringContainsString('Tables:', $display);
