@@ -14,12 +14,16 @@ use Nails\FindReplace\Model\Change;
 use Nails\FindReplace\Scope;
 use Nails\FindReplace\Service\Engine;
 use Nails\FindReplace\Service\Schema;
+use Symfony\Component\Console\Helper\Helper;
 use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\BufferedOutput;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Output\StreamOutput;
 use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Symfony\Component\Console\Terminal;
 
 abstract class AbstractCommand extends Base
 {
@@ -172,8 +176,7 @@ abstract class AbstractCommand extends Base
      */
     protected function renderHits(OutputInterface $output, array $hits, bool $caseSensitive): void
     {
-        $table = new Table($output);
-        $table->setHeaders(['Table', 'Column', 'ID', 'Title', 'Snippet', 'Reason']);
+        $headers = ['Table', 'Column', 'ID', 'Title', 'Snippet', 'Reason'];
         $rows = [];
 
         foreach ($hits as $hit) {
@@ -188,8 +191,7 @@ abstract class AbstractCommand extends Base
             ];
         }
 
-        $table->setRows($rows);
-        $table->render();
+        $this->renderTable($output, $headers, $rows);
     }
 
     /**
@@ -198,10 +200,280 @@ abstract class AbstractCommand extends Base
      */
     protected function renderTable(OutputInterface $output, array $headers, array $rows): void
     {
-        $table = new Table($output);
+        $buffer = new BufferedOutput(
+            $output->getVerbosity(),
+            $output->isDecorated(),
+            $output->getFormatter(),
+        );
+        $table = new Table($buffer);
         $table->setHeaders($headers);
         $table->setRows($rows);
+        $this->fit($table, $headers, $rows);
         $table->render();
+        $this->emit($output, $buffer->fetch());
+    }
+
+    /**
+     * Keep the table inside the terminal and wrap cells that would overflow it.
+     * Long text shrinks before table names, column names, and ids.
+     *
+     * @param list<string> $headers
+     * @param list<list<string>> $rows
+     */
+    private function fit(Table $table, array $headers, array $rows): void
+    {
+        foreach ($this->columnCaps($headers, $rows, $this->terminalWidth()) as $index => $cap) {
+            $table->setColumnMaxWidth($index, $cap);
+        }
+    }
+
+    /**
+     * @param list<string> $headers
+     * @param list<list<string>> $rows
+     *
+     * @return array<int, int>
+     */
+    private function columnCaps(array $headers, array $rows, int $terminalWidth): array
+    {
+        $count = count($headers);
+
+        if ($count === 0) {
+            return [];
+        }
+
+        // Leave one column free. A line that fills the terminal wraps before its newline.
+        $budget = max($count, $terminalWidth - ($count * 3 + 1) - 1);
+        $content = [];
+
+        foreach ($headers as $index => $header) {
+            $content[$index] = max(1, Helper::width($header));
+        }
+
+        foreach ($rows as $row) {
+            foreach ($row as $index => $cell) {
+                if (!isset($content[$index])) {
+                    continue;
+                }
+
+                $content[$index] = max($content[$index], $this->cellWidth($cell));
+            }
+        }
+
+        $caps = $content;
+        $this->shrinkTo($caps, $headers, $budget, [
+            'Snippet' => 24,
+            'Preview' => 24,
+            'Title' => 16,
+            'Replacement' => 12,
+        ]);
+        $this->shrinkTo($caps, $headers, $budget, []);
+        $this->giveSpare($caps, $content, $headers, $budget);
+
+        return $caps;
+    }
+
+    /**
+     * @param array<int, int> $caps
+     * @param list<string> $headers
+     * @param array<string, int> $floors
+     */
+    private function shrinkTo(array &$caps, array $headers, int $budget, array $floors): void
+    {
+        foreach (['Snippet', 'Preview', 'Title', 'Replacement', 'Reason', 'Table', 'Column', 'ID'] as $name) {
+            $index = array_search($name, $headers, true);
+
+            if ($index === false || !isset($caps[$index])) {
+                continue;
+            }
+
+            $floor = max(Helper::width($name), $floors[$name] ?? 0);
+
+            while ($caps[$index] > $floor && array_sum($caps) > $budget) {
+                $caps[$index]--;
+            }
+        }
+    }
+
+    /**
+     * @param array<int, int> $caps
+     * @param array<int, int> $content
+     * @param list<string> $headers
+     */
+    private function giveSpare(array &$caps, array $content, array $headers, int $budget): void
+    {
+        $spare = $budget - array_sum($caps);
+
+        foreach (['Snippet', 'Preview', 'Title', 'Replacement', 'Reason', 'Table', 'Column'] as $name) {
+            if ($spare <= 0) {
+                return;
+            }
+
+            $index = array_search($name, $headers, true);
+
+            if ($index === false || !isset($caps[$index], $content[$index])) {
+                continue;
+            }
+
+            $add = min($spare, max(0, $content[$index] - $caps[$index]));
+            $caps[$index] += $add;
+            $spare -= $add;
+        }
+    }
+
+    private function cellWidth(string $value): int
+    {
+        $width = 0;
+        $lines = preg_split("/\r\n|\n|\r/", $value);
+
+        foreach (is_array($lines) ? $lines : [$value] as $line) {
+            $width = max($width, Helper::width($line));
+        }
+
+        return $width;
+    }
+
+    protected function terminalWidth(): int
+    {
+        $width = (new Terminal())->getWidth();
+
+        return $width > 0 ? $width : 80;
+    }
+
+    /**
+     * Write rendered text, or page it on a terminal when it is taller than the screen.
+     */
+    protected function emit(OutputInterface $output, string $rendered): void
+    {
+        if ($this->page($output, $rendered)) {
+            return;
+        }
+
+        $output->write($rendered, false, OutputInterface::OUTPUT_RAW);
+    }
+
+    private function page(OutputInterface $output, string $rendered): bool
+    {
+        if (!$output instanceof StreamOutput || !defined('STDIN')) {
+            return false;
+        }
+
+        $stream = $output->getStream();
+
+        if (!is_resource($stream) || !is_resource(STDIN) || !stream_isatty($stream) || !stream_isatty(STDIN)) {
+            return false;
+        }
+
+        $height = (new Terminal())->getHeight();
+        $room = $height - 7;
+
+        if ($room < 5) {
+            return false;
+        }
+
+        $lines = explode("\n", rtrim($rendered, "\n"));
+
+        if (count($lines) <= $room) {
+            return false;
+        }
+
+        if ($this->pageWithPager($stream, $rendered)) {
+            return true;
+        }
+
+        $offset = 0;
+        $total = count($lines);
+
+        while ($offset < $total) {
+            $slice = array_slice($lines, $offset, $room);
+            $output->write(implode("\n", $slice) . "\n", false, OutputInterface::OUTPUT_RAW);
+            $offset += count($slice);
+
+            if ($offset >= $total) {
+                break;
+            }
+
+            $output->write('<comment>-- More -- Enter for the next page, q to stop</comment> ');
+            $answer = fgets(STDIN);
+            $output->write("\033[1A\033[2K", false, OutputInterface::OUTPUT_RAW);
+
+            if (!is_string($answer) || str_starts_with($answer, 'q')) {
+                break;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param resource $stream
+     */
+    private function pageWithPager($stream, string $rendered): bool
+    {
+        $program = $this->pagerProgram();
+
+        if ($program === null || !function_exists('proc_open')) {
+            return false;
+        }
+
+        $path = tempnam(sys_get_temp_dir(), 'fr-page');
+
+        if ($path === false || file_put_contents($path, $rendered) === false) {
+            if (is_string($path)) {
+                @unlink($path);
+            }
+
+            return false;
+        }
+
+        $command = str_ends_with($program, 'less')
+            ? [$program, '-FRX', '--', $path]
+            : [$program, '-e', $path];
+        $pipes = [];
+        $process = proc_open(
+            $command,
+            [
+                0 => STDIN,
+                1 => $stream,
+                2 => $stream,
+            ],
+            $pipes,
+        );
+
+        if (!is_resource($process)) {
+            @unlink($path);
+
+            return false;
+        }
+
+        proc_close($process);
+        @unlink($path);
+
+        return true;
+    }
+
+    private function pagerProgram(): ?string
+    {
+        $path = getenv('PATH');
+
+        if (!is_string($path) || $path === '') {
+            $path = '/usr/bin:/bin';
+        }
+
+        foreach (['less', 'more'] as $name) {
+            foreach (explode(PATH_SEPARATOR, $path) as $dir) {
+                if ($dir === '') {
+                    continue;
+                }
+
+                $candidate = rtrim($dir, '/') . '/' . $name;
+
+                if (is_executable($candidate)) {
+                    return $candidate;
+                }
+            }
+        }
+
+        return null;
     }
 
     protected function confirmed(InputInterface $input, OutputInterface $output): bool

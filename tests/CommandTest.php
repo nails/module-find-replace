@@ -80,6 +80,45 @@ class CommandTest extends DatabaseTestCase
         $this->assertDoesNotMatchRegularExpression('/\n    token\s+/', $columns);
     }
 
+    public function test_search_wraps_the_results_table_to_the_terminal(): void
+    {
+        $table = 'fr_cli_wrap';
+        $this->createTable($table, '
+            `id` INT NOT NULL AUTO_INCREMENT,
+            `body` TEXT NULL,
+            PRIMARY KEY (`id`)
+        ');
+        $this->insert($table, [
+            'id' => 1,
+            'body' => 'alpha ' . str_repeat('z', 200) . ' endtoken',
+        ]);
+
+        putenv('COLUMNS=72');
+
+        try {
+            $output = $this->executeCommand(new Search(), [
+                'term' => 'alpha',
+                '--table' => [$table],
+            ]);
+        } finally {
+            putenv('COLUMNS');
+        }
+
+        $display = $output->getDisplay();
+        $this->assertSame(0, $output->getStatusCode());
+        $this->assertMatchesRegularExpression(
+            '/\|\s+Table\s+\|\s+Column\s+\|\s+ID\s+\|\s+Title\s+\|\s+Snippet\s+\|\s+Reason\s+\|/',
+            $display,
+        );
+        $this->assertStringContainsString('alpha', $display);
+        $this->assertStringContainsString($table, $display);
+        $this->assertDoesNotMatchRegularExpression('/z{40}/', $display);
+
+        foreach (explode("\n", $display) as $line) {
+            $this->assertLessThanOrEqual(72, mb_strlen(rtrim($line, "\r")));
+        }
+    }
+
     public function test_search_prints_a_table_and_writes_csv_and_json(): void
     {
         $table = 'fr_cli_search';
