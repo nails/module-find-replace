@@ -1,5 +1,6 @@
 <?php
 
+use Nails\Admin\Helper;
 use Nails\FindReplace\Admin\Controller\FindReplace;
 use Nails\FindReplace\Factory\StoredResult;
 use Nails\FindReplace\Model\Search;
@@ -10,19 +11,12 @@ use Nails\FindReplace\Resource;
 /** @var array<string, string> $facets */
 /** @var array<string, array{label: string, values: array<string, int>}> $facetOptions */
 /** @var int $outstanding */
-/** @var int $page */
-/** @var int $pages */
+/** @var stdClass $pagination */
 /** @var int $total */
 /** @var bool $canReplace */
 /** @var list<string> $badgeKeys */
 
 $id = (int) $search->id;
-$query = ['id' => $id];
-
-if ($facets !== []) {
-    $query['facet'] = $facets;
-}
-
 $filtered = $facets !== [];
 $badges = [
     Search::STATUS_PENDING => ['badge-warning', 'Pending'],
@@ -213,6 +207,8 @@ if ($search->status() === Search::STATUS_COMPLETE) {
         <?php
     }
 
+    echo Helper::loadPagination($pagination);
+
     echo form_open(FindReplace::url('replace'), [
         'id' => 'find-replace-results',
         'data-filtered' => $filtered ? '1' : '0',
@@ -367,33 +363,7 @@ if ($search->status() === Search::STATUS_COMPLETE) {
     }
 
     echo form_close();
-
-    if ($pages > 1) {
-        ?>
-        <p>
-            Page <?=htmlspecialchars((string) $page)?> of <?=htmlspecialchars((string) $pages)?>
-            <?php
-
-            if ($page > 1) {
-                $previous = $query;
-                $previous['page'] = $page - 1;
-                ?>
-                <a href="<?=htmlspecialchars(FindReplace::url('results') . '?' . http_build_query($previous))?>">Previous</a>
-                <?php
-            }
-
-            if ($page < $pages) {
-                $next = $query;
-                $next['page'] = $page + 1;
-                ?>
-                <a href="<?=htmlspecialchars(FindReplace::url('results') . '?' . http_build_query($next))?>">Next</a>
-                <?php
-            }
-
-            ?>
-        </p>
-        <?php
-    }
+    echo Helper::loadPagination($pagination);
 }
 
 ?>

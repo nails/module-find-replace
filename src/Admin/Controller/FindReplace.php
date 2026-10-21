@@ -124,6 +124,7 @@ class FindReplace extends Base
         if ($search->status() === Search::STATUS_COMPLETE) {
             $outstanding = $this->resultModel()->outstanding((int) $search->id);
             $total = $this->resultModel()->count((int) $search->id, $facets);
+            $page = min($page, max(1, (int) ceil($total / self::PER_PAGE)));
             $rows = $this->resultModel()->page(
                 (int) $search->id,
                 $facets,
@@ -132,8 +133,6 @@ class FindReplace extends Base
                 $search->contextLength(),
             );
         }
-
-        $pages = max(1, (int) ceil($total / self::PER_PAGE));
 
         if ($search->status() === Search::STATUS_COMPLETE) {
             $exportQuery = ['id' => (int) $search->id];
@@ -159,8 +158,7 @@ class FindReplace extends Base
             ->setData('facetOptions', $this->facetOptions((int) $search->id))
             ->setData('badgeKeys', $this->registry()->badges())
             ->setData('outstanding', $outstanding)
-            ->setData('page', min($page, $pages))
-            ->setData('pages', $pages)
+            ->setData('pagination', Helper::paginationObject($page, self::PER_PAGE, $total))
             ->setData('total', $total)
             ->setData('canReplace', userHasPermission(Permission\Replace::class))
             ->loadView('results');
