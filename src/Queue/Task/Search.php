@@ -2,6 +2,7 @@
 
 namespace Nails\FindReplace\Queue\Task;
 
+use Nails\Common\Service\Database;
 use Nails\Factory;
 use Nails\FindReplace\Admin\Controller\FindReplace;
 use Nails\FindReplace\Constants;
@@ -103,6 +104,7 @@ class Search implements Task
                 ->send();
         } catch (\Throwable) {
             // A finished search stays complete when the notification cannot be sent.
+            $this->resetQueryBuilder();
         }
     }
 
@@ -124,6 +126,19 @@ class Search implements Task
                 ->send();
         } catch (\Throwable) {
             // The search row already records the failure.
+            $this->resetQueryBuilder();
+        }
+    }
+
+    /**
+     * A failed notification query stays on the shared builder and is appended to the next model query.
+     */
+    private function resetQueryBuilder(): void
+    {
+        $database = Factory::service('Database');
+
+        if ($database instanceof Database) {
+            $database->reset();
         }
     }
 

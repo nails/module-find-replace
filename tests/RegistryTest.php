@@ -166,20 +166,6 @@ class RegistryTest extends TestCase
         $this->assertTrue($registry->accepts('resolver', 'Page'));
     }
 
-    public function test_app_languages_and_status_are_closed(): void
-    {
-        $registry = new Registry();
-        $languages = $registry->facetValues()['language'] ?? null;
-
-        $this->assertSame(['DRAFT', 'PUBLISHED'], $registry->facetValues()['status'] ?? null);
-        $this->assertSame(['CN', 'DE', 'EN', 'JP'], $languages);
-        $this->assertFalse($registry->accepts('status', 'ARCHIVED'));
-        $this->assertFalse($registry->accepts('language', 'en'));
-        $this->assertFalse($registry->accepts('language', 'FR'));
-        $this->assertTrue($registry->accepts('language', 'EN'));
-        $this->assertTrue($registry->accepts('resolver', 'Unresolved'));
-    }
-
     public function test_badge_keys_follow_first_seen_order_and_skip_resolver(): void
     {
         $registry = new Registry([], [

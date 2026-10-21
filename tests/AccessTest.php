@@ -13,6 +13,7 @@ use Nails\FindReplace\Model\Change;
 use Nails\FindReplace\Model\Result;
 use Nails\FindReplace\Model\Search;
 use Nails\FindReplace\Service\Access;
+use Tests\FindReplace\Support\StatusResolver;
 
 class AccessTest extends AdminDatabaseTestCase
 {
@@ -83,6 +84,14 @@ class AccessTest extends AdminDatabaseTestCase
 
     public function test_closed_facet_values_are_not_stored(): void
     {
+        Factory::destroyService('Registry', Constants::MODULE_SLUG);
+        Factory::service('Registry', Constants::MODULE_SLUG, [
+            new StatusResolver(values: [
+                'status' => ['PUBLISHED', 'DRAFT'],
+                'language' => ['EN'],
+            ]),
+        ]);
+
         $id = $this->searches()->open(11, 'alpha', 'beta', true, [], []);
         $this->results()->store($id, [
             $this->hit('1', [

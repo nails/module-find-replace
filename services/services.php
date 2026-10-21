@@ -16,8 +16,8 @@ use Nails\FindReplace\Service\Schema;
 
 return [
     'services' => [
-        'Registry' => function (): Registry {
-            return new Registry();
+        'Registry' => function (?array $resolvers = null): Registry {
+            return new Registry(null, $resolvers);
         },
         'Schema' => function (?PDODatabase $database = null, ?Registry $registry = null): Schema {
             $database = $database ?? Factory::service('PDODatabase');

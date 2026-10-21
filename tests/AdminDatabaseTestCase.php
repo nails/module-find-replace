@@ -31,6 +31,7 @@ abstract class AdminDatabaseTestCase extends DatabaseTestCase
         Factory::destroyService('Access', Constants::MODULE_SLUG);
         Factory::destroyService('Engine', Constants::MODULE_SLUG);
         Factory::destroyService('Schema', Constants::MODULE_SLUG);
+        Factory::destroyService('Registry', Constants::MODULE_SLUG);
         Factory::destroyModel('Search', Constants::MODULE_SLUG);
         Factory::destroyModel('Result', Constants::MODULE_SLUG);
         Factory::destroyModel('ResultFacet', Constants::MODULE_SLUG);

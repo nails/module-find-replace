@@ -17,6 +17,7 @@ use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
+use Tests\FindReplace\Support\StatusResolver;
 
 class CommandTest extends DatabaseTestCase
 {
@@ -41,6 +42,7 @@ class CommandTest extends DatabaseTestCase
 
     public function tearDown(): void
     {
+        Factory::destroyService('Registry', Constants::MODULE_SLUG);
         parent::tearDown();
 
         foreach ($this->files as $file) {
@@ -246,6 +248,14 @@ class CommandTest extends DatabaseTestCase
         ]);
         $this->assertStringContainsString('Found 0 match', $anded->getDisplay());
 
+        Factory::destroyService('Registry', Constants::MODULE_SLUG);
+        Factory::service('Registry', Constants::MODULE_SLUG, [
+            new StatusResolver(values: [
+                'status' => ['PUBLISHED', 'DRAFT'],
+                'language' => ['EN'],
+            ]),
+        ]);
+
         $archived = $this->executeCommand(new Search(), [
             'term' => 'Alpha',
             '--table' => [$table],
@@ -260,7 +270,7 @@ class CommandTest extends DatabaseTestCase
             '--facet' => ['language:FR'],
         ]);
         $this->assertNotSame(0, $language->getStatusCode());
-        $this->assertStringContainsString('language must be one of CN, DE, EN, JP', $language->getDisplay());
+        $this->assertStringContainsString('language must be one of EN', $language->getDisplay());
 
         $resolved = $this->executeCommand(new Search(), [
             'term' => 'Alpha',
