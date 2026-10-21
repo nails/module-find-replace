@@ -280,6 +280,12 @@ if ($search->status() === Search::STATUS_COMPLETE) {
                             $recordId = $hit->getId();
                         }
 
+                        $idSuffix = ' #' . $recordId;
+
+                        if (($hit->getEntityLabel() ?? '') === '' && $recordId !== '' && str_ends_with($title, $idSuffix)) {
+                            $title = substr($title, 0, -strlen($idSuffix));
+                        }
+
                         $badgeMarkup = '';
 
                         foreach ($badgeKeys as $badgeKey) {
