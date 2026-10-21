@@ -48,10 +48,15 @@ class FindReplace extends Base
     public function index(): void
     {
         $this->requireSearchPermission();
+        $warning = $this->searchQueue()->warning();
+
+        if ($warning !== null) {
+            $this->oUserFeedback->warning(htmlspecialchars($warning, ENT_QUOTES, 'UTF-8'));
+        }
+
         $this
             ->addBreadcrumb('Utilities')
             ->addBreadcrumb('Find & Replace')
-            ->setData('queueWarning', $this->searchQueue()->warning())
             ->loadView('index');
     }
 
