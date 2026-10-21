@@ -5,4 +5,8 @@
             <directory suffix="Test.php">./tests</directory>
         </testsuite>
     </testsuites>
+    <php>
+        <env name="PRIVATE_KEY" value="testing" force="true"/>
+        <env name="ENVIRONMENT" value="TESTING" force="true"/>
+    </php>
 </phpunit>
