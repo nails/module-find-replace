@@ -13,6 +13,7 @@ use Nails\FindReplace\Resource;
 /** @var int $pages */
 /** @var int $total */
 /** @var bool $canReplace */
+/** @var list<string> $badgeKeys */
 
 $id = (int) $search->id;
 $query = ['id' => $id];
@@ -265,6 +266,20 @@ if ($search->status() === Search::STATUS_COMPLETE) {
                     <td>
                         <?php
 
+                        $hitFacets = $hit->getFacets();
+
+                        foreach ($badgeKeys as $badgeKey) {
+                            $badgeValue = $hitFacets[$badgeKey] ?? '';
+
+                            if ($badgeValue === '') {
+                                continue;
+                            }
+
+                            ?>
+                            <span class="badge badge-secondary u-mr5"><?=htmlspecialchars($badgeValue)?></span>
+                            <?php
+                        }
+
                         if ($hit->getEntityLabel() !== null && $hit->getEntityLabel() !== '') {
                             ?>
                             <?=htmlspecialchars($hit->getEntityLabel())?>
@@ -298,7 +313,7 @@ if ($search->status() === Search::STATUS_COMPLETE) {
                         }
 
                         foreach ($hit->getActions() as $action) {
-                            $class = trim('btn btn-sm btn-primary ' . (string) $action->getCssClass());
+                            $class = $action->buttonClass();
                             $target = $action->getTarget();
                             ?>
                             <a class="<?=htmlspecialchars($class)?>" href="<?=htmlspecialchars($action->getUrl())?>"<?php

@@ -2,12 +2,14 @@
 
 namespace Tests\FindReplace;
 
+require_once __DIR__ . '/Support/BadgeResolver.php';
 require_once __DIR__ . '/Support/ListExclusion.php';
 require_once __DIR__ . '/Support/StatusResolver.php';
 
 use Nails\FindReplace\Factory\Location;
 use Nails\FindReplace\Service\Registry;
 use PHPUnit\Framework\TestCase;
+use Tests\FindReplace\Support\BadgeResolver;
 use Tests\FindReplace\Support\ListExclusion;
 use Tests\FindReplace\Support\StatusResolver;
 
@@ -176,6 +178,27 @@ class RegistryTest extends TestCase
         $this->assertFalse($registry->accepts('language', 'FR'));
         $this->assertTrue($registry->accepts('language', 'EN'));
         $this->assertTrue($registry->accepts('resolver', 'Unresolved'));
+    }
+
+    public function test_badge_keys_follow_first_seen_order_and_skip_resolver(): void
+    {
+        $registry = new Registry([], [
+            new BadgeResolver(['language', 'resolver', 'status']),
+            new StatusResolver(),
+            new BadgeResolver(['status', 'office', 'language']),
+        ]);
+
+        $this->assertSame(['language', 'status', 'office'], $registry->badges());
+    }
+
+    public function test_blank_badge_key_throws(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Badge keys must be a list of strings');
+
+        (new Registry([], [
+            new BadgeResolver(['']),
+        ]))->badges();
     }
 
     public function test_blank_facet_value_throws(): void

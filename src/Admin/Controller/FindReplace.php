@@ -154,6 +154,7 @@ class FindReplace extends Base
             ->setData('rows', $rows)
             ->setData('facets', $facets)
             ->setData('facetOptions', $this->facetOptions((int) $search->id))
+            ->setData('badgeKeys', $this->registry()->badges())
             ->setData('page', min($page, $pages))
             ->setData('pages', $pages)
             ->setData('total', $total)

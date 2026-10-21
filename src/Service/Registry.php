@@ -8,6 +8,7 @@ use Nails\FindReplace\Exclusion\Pattern;
 use Nails\FindReplace\Factory\Location;
 use Nails\FindReplace\Interfaces\Exclusion;
 use Nails\FindReplace\Interfaces\Resolver;
+use Nails\FindReplace\Interfaces\Resolver\Badges;
 use Nails\FindReplace\Interfaces\Resolver\FacetValues;
 use Nails\FindReplace\Interfaces\Resolver\Facets;
 
@@ -27,6 +28,9 @@ class Registry
 
     /** @var array<string, array{label: string, values: list<string>|null}>|null */
     private ?array $catalogue = null;
+
+    /** @var list<string>|null */
+    private ?array $badges = null;
 
     /**
      * @param list<Exclusion>|null $exclusions Discovered when null. The package exclusion is always included.
@@ -126,6 +130,43 @@ class Registry
         $allowed = $this->facetValues()[$key] ?? [];
 
         return $key . ' must be one of ' . implode(', ', $allowed);
+    }
+
+    /**
+     * Facet keys resolvers asked to show as badges, in first-seen order.
+     * The resolver facet is omitted; the row already shows the entity label.
+     *
+     * @return list<string>
+     */
+    public function badges(): array
+    {
+        if ($this->badges !== null) {
+            return $this->badges;
+        }
+
+        $badges = [];
+
+        foreach ($this->resolvers as $resolver) {
+            if (!$resolver instanceof Badges) {
+                continue;
+            }
+
+            foreach ($resolver->badges() as $key) {
+                if ($key === '') {
+                    throw new \InvalidArgumentException('Badge keys must be a list of strings');
+                }
+
+                if ($key === 'resolver' || in_array($key, $badges, true)) {
+                    continue;
+                }
+
+                $badges[] = $key;
+            }
+        }
+
+        $this->badges = $badges;
+
+        return $badges;
     }
 
     /**
