@@ -9,6 +9,7 @@ use Nails\Common\Service\Input;
 use Nails\Common\Service\Output;
 use Nails\Common\Service\PDODatabase;
 use Nails\Factory;
+use Nails\FindReplace\Admin\OutcomeNotice;
 use Nails\FindReplace\Admin\Permission;
 use Nails\FindReplace\Constants;
 use Nails\FindReplace\Exclusion\Pattern;
@@ -247,7 +248,7 @@ class FindReplace extends Base
             $this->changeModel(),
             Run::admin($this->userId(), (int) $search->id),
         );
-        $this->oUserFeedback->success($this->summary($outcomes));
+        $this->report($outcomes);
         redirect($this->resultsUrl((int) $search->id, $facets));
     }
 
@@ -349,7 +350,7 @@ class FindReplace extends Base
             return;
         }
 
-        $this->oUserFeedback->success($this->summary($outcomes));
+        $this->report($outcomes);
         redirect(self::url('changes'));
     }
 
@@ -620,23 +621,20 @@ class FindReplace extends Base
     /**
      * @param list<Outcome> $outcomes
      */
-    private function summary(array $outcomes): string
+    private function report(array $outcomes): void
     {
-        $applied = 0;
-        $skipped = 0;
-        $failed = 0;
+        $notice = new OutcomeNotice();
+        $this->oUserFeedback->success($notice->summary($outcomes));
+        $skipped = $notice->skipped($outcomes);
+        $failed = $notice->failed($outcomes);
 
-        foreach ($outcomes as $outcome) {
-            if ($outcome->getStatus() === Outcome::APPLIED) {
-                $applied++;
-            } elseif ($outcome->getStatus() === Outcome::SKIPPED) {
-                $skipped++;
-            } else {
-                $failed++;
-            }
+        if ($skipped !== '') {
+            $this->oUserFeedback->warning($skipped);
         }
 
-        return 'Applied ' . $applied . ', skipped ' . $skipped . ', failed ' . $failed . '.';
+        if ($failed !== '') {
+            $this->oUserFeedback->error($failed);
+        }
     }
 
     private function searches(): Search
