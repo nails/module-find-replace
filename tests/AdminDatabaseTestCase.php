@@ -8,6 +8,7 @@ use Nails\Factory;
 use Nails\FindReplace\Constants;
 use Nails\FindReplace\Database\Migration\Migration0;
 use Nails\FindReplace\Database\Migration\Migration1;
+use Nails\FindReplace\Database\Migration\Migration2;
 
 abstract class AdminDatabaseTestCase extends DatabaseTestCase
 {
@@ -22,6 +23,7 @@ abstract class AdminDatabaseTestCase extends DatabaseTestCase
         $this->pdo()->query('SET FOREIGN_KEY_CHECKS=1');
         (new Migration0($this->pdo()))->execute();
         (new Migration1($this->pdo()))->execute();
+        (new Migration2($this->pdo()))->execute();
         $this->registerTable('nails_find_replace_result_facet');
         $this->registerTable('nails_find_replace_result');
         $this->registerTable('nails_find_replace_search');

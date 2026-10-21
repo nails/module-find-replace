@@ -13,6 +13,8 @@ use Nails\FindReplace\Factory\Query;
 use Nails\FindReplace\Factory\Run;
 use Nails\FindReplace\Factory\Term;
 use Nails\FindReplace\Model\Change;
+use Nails\FindReplace\Model\Result as ResultModel;
+use Nails\FindReplace\Model\Search as SearchModel;
 use Nails\FindReplace\Reason;
 use Nails\FindReplace\Scope;
 use Nails\FindReplace\Resolver\TableColumn;
@@ -392,6 +394,13 @@ class Engine
                 $decision['before'],
                 $decision['after'],
             );
+            $this->markResult(
+                $run->getSearchId(),
+                $location->getTable(),
+                $matched->getId(),
+                $location->getColumn(),
+                true,
+            );
             $transaction->commit();
 
             return new Outcome(Outcome::APPLIED, $hit, null, $decision['before'], $decision['after']);
@@ -450,6 +459,13 @@ class Engine
             }
 
             $this->updateCell($location, $row->getPrimaryKey(), $row->getValueBefore());
+            $this->releaseResult(
+                $row->getSearchId(),
+                $location->getTable(),
+                $row->getPrimaryKey(),
+                $location->getColumn(),
+                $row->getValueBefore(),
+            );
             $changes->record(
                 $this->database,
                 $run,
@@ -662,6 +678,81 @@ class Engine
         // The control character is a backslash. MySQL reads `\\` inside this
         // quoted ESCAPE literal as that single backslash.
         return '"' . addcslashes(self::OPERATOR_CONTROL_CHARACTER, '\\"') . '"';
+    }
+
+    private function markResult(
+        ?int $searchId,
+        string $table,
+        string $primaryKey,
+        string $column,
+        bool $applied,
+    ): void {
+        if ($searchId === null) {
+            return;
+        }
+
+        $statement = $this->database->prepare(
+            'UPDATE ' . $this->quote(ResultModel::TABLE) . '
+            SET `applied` = :applied
+            WHERE `search_id` = :search_id
+            AND `table_name` = :table_name
+            AND `primary_key` = :primary_key
+            AND `column_name` = :column_name'
+        );
+        $statement->execute([
+            'applied' => $applied ? 1 : 0,
+            'search_id' => $searchId,
+            'table_name' => $table,
+            'primary_key' => $primaryKey,
+            'column_name' => $column,
+        ]);
+    }
+
+    /**
+     * A reverted cell that contains the searched term is outstanding again.
+     */
+    private function releaseResult(
+        ?int $searchId,
+        string $table,
+        string $primaryKey,
+        string $column,
+        string $content,
+    ): void {
+        if ($searchId === null) {
+            return;
+        }
+
+        $statement = $this->database->prepare(
+            'SELECT result.`term`, search.`case_sensitive`
+            FROM ' . $this->quote(ResultModel::TABLE) . ' result
+            INNER JOIN ' . $this->quote(SearchModel::TABLE) . ' search
+                ON search.`id` = result.`search_id`
+            WHERE result.`search_id` = :search_id
+            AND result.`table_name` = :table_name
+            AND result.`primary_key` = :primary_key
+            AND result.`column_name` = :column_name
+            LIMIT 1'
+        );
+        $statement->execute([
+            'search_id' => $searchId,
+            'table_name' => $table,
+            'primary_key' => $primaryKey,
+            'column_name' => $column,
+        ]);
+        $row = $statement->fetch(\PDO::FETCH_ASSOC);
+
+        if (!is_array($row)) {
+            return;
+        }
+
+        $term = $row['term'] ?? '';
+        $term = is_string($term) ? $term : '';
+        $caseSensitive = (string) ($row['case_sensitive'] ?? '1') === '1';
+        $found = $caseSensitive
+            ? mb_strpos($content, $term)
+            : mb_stripos($content, $term);
+
+        $this->markResult($searchId, $table, $primaryKey, $column, $found === false);
     }
 
     private function quote(string $identifier): string

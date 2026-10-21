@@ -9,6 +9,7 @@ use Nails\FindReplace\Resource;
 /** @var list<StoredResult> $rows */
 /** @var array<string, string> $facets */
 /** @var array<string, array{label: string, values: array<string, int>}> $facetOptions */
+/** @var int $outstanding */
 /** @var int $page */
 /** @var int $pages */
 /** @var int $total */
@@ -84,7 +85,7 @@ if ($search->isOpen()) {
                 ?>
                 <span class="find-replace-detail__fact">
                     <span class="find-replace-detail__fact-label">Results</span>
-                    <span class="find-replace-detail__fact-value"><?=htmlspecialchars((string) $search->resultCount())?></span>
+                    <span class="find-replace-detail__fact-value"><?=htmlspecialchars((string) $outstanding)?></span>
                 </span>
                 <?php
             }
@@ -197,7 +198,7 @@ if ($search->status() === Search::STATUS_COMPLETE) {
                 ?>
                 <span class="filterText">
                     Showing <?=htmlspecialchars((string) $total)?>
-                    of <?=htmlspecialchars((string) $search->resultCount())?>.
+                    of <?=htmlspecialchars((string) $outstanding)?>.
                 </span>
                 <?php
             }

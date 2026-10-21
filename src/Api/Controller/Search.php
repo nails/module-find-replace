@@ -111,7 +111,9 @@ class Search extends \Nails\Api\Controller\Base
             'status' => $search->status(),
             'tables_scanned' => $search->tablesScanned(),
             'tables_total' => $search->tablesTotal(),
-            'result_count' => $search->resultCount(),
+            'result_count' => $search->status() === SearchModel::STATUS_COMPLETE
+                ? $this->results()->outstanding($id)
+                : $search->resultCount(),
             'persistent' => $search->isPersistent(),
             'last_run' => $search->lastRunLabel(),
             'error' => $search->errorMessage(),

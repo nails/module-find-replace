@@ -84,7 +84,7 @@ class Result extends Base
         $statement = $this->database()->prepare(
             'SELECT result.*
             FROM ' . $this->quote(self::TABLE) . ' result
-            WHERE result.search_id = :search_id' . $facetSql . '
+            WHERE result.search_id = :search_id' . $this->openSql() . $facetSql . '
             ORDER BY result.id ASC
             LIMIT ' . $perPage . ' OFFSET ' . $offset
         );
@@ -103,12 +103,17 @@ class Result extends Base
         $statement = $this->database()->prepare(
             'SELECT COUNT(*)
             FROM ' . $this->quote(self::TABLE) . ' result
-            WHERE result.search_id = :search_id' . $facetSql
+            WHERE result.search_id = :search_id' . $this->openSql() . $facetSql
         );
         $statement->execute($parameters);
         $count = $statement->fetchColumn();
 
         return is_numeric($count) ? (int) $count : 0;
+    }
+
+    public function outstanding(int $searchId): int
+    {
+        return $this->count($searchId, []);
     }
 
     /**
@@ -120,7 +125,7 @@ class Result extends Base
             'SELECT facet.facet, facet.value, COUNT(*) AS total
             FROM ' . $this->quote(self::FACET_TABLE) . ' facet
             INNER JOIN ' . $this->quote(self::TABLE) . ' result ON result.id = facet.result_id
-            WHERE result.search_id = :search_id
+            WHERE result.search_id = :search_id' . $this->openSql() . '
             GROUP BY facet.facet, facet.value
             ORDER BY facet.facet ASC, facet.value ASC'
         );
@@ -184,7 +189,7 @@ class Result extends Base
         $statement = $this->database()->prepare(
             'SELECT result.id
             FROM ' . $this->quote(self::TABLE) . ' result
-            WHERE result.search_id = :search_id' . $facetSql . $limit . '
+            WHERE result.search_id = :search_id' . $this->openSql() . $facetSql . $limit . '
             ORDER BY result.id ASC'
         );
         $statement->execute($parameters);
@@ -284,6 +289,11 @@ class Result extends Base
         }
 
         return [$sql, $parameters];
+    }
+
+    private function openSql(): string
+    {
+        return ' AND result.applied = 0';
     }
 
     private function insertHit(int $searchId, Hit $hit, bool $caseSensitive): void

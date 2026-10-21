@@ -118,9 +118,11 @@ class FindReplace extends Base
 
         $page = $this->page($this->input());
         $total = 0;
+        $outstanding = 0;
         $rows = [];
 
         if ($search->status() === Search::STATUS_COMPLETE) {
+            $outstanding = $this->resultModel()->outstanding((int) $search->id);
             $total = $this->resultModel()->count((int) $search->id, $facets);
             $rows = $this->resultModel()->page(
                 (int) $search->id,
@@ -156,6 +158,7 @@ class FindReplace extends Base
             ->setData('facets', $facets)
             ->setData('facetOptions', $this->facetOptions((int) $search->id))
             ->setData('badgeKeys', $this->registry()->badges())
+            ->setData('outstanding', $outstanding)
             ->setData('page', min($page, $pages))
             ->setData('pages', $pages)
             ->setData('total', $total)
