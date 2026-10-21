@@ -18,8 +18,16 @@ class ChangesTest extends DatabaseTestCase
     public function setUp(): void
     {
         parent::setUp();
+        $this->pdo()->query('SET FOREIGN_KEY_CHECKS=0');
+        $this->pdo()->query('DROP TABLE IF EXISTS `nails_find_replace_result_facet`');
+        $this->pdo()->query('DROP TABLE IF EXISTS `nails_find_replace_result`');
+        $this->pdo()->query('DROP TABLE IF EXISTS `nails_find_replace_search`');
         $this->pdo()->query('DROP TABLE IF EXISTS `nails_find_replace_change`');
+        $this->pdo()->query('SET FOREIGN_KEY_CHECKS=1');
         (new Migration0($this->pdo()))->execute();
+        $this->registerTable('nails_find_replace_result_facet');
+        $this->registerTable('nails_find_replace_result');
+        $this->registerTable('nails_find_replace_search');
         $this->registerTable('nails_find_replace_change');
     }
 
