@@ -1,10 +1,5 @@
 import {paintBadge} from './Status.js';
 
-const MESSAGES = {
-    PENDING: 'Waiting for a worker to start this search.',
-    RUNNING: 'Scanning tables.',
-};
-
 class Progress {
     constructor() {
         document.querySelectorAll('[data-find-replace-status]').forEach((node) => {
@@ -49,38 +44,27 @@ class Progress {
         const status = payload.status || '';
         const badgeNode = node.querySelector('[data-find-replace-badge]');
         const message = node.querySelector('[data-find-replace-message]');
-        const meter = node.querySelector('[data-find-replace-meter]');
-        const bar = node.querySelector('[data-find-replace-bar]');
-        const progress = node.querySelector('.find-replace-progress');
+        const scanning = node.querySelector('[data-find-replace-scanning]');
+        const meter = node.querySelector('.js-admin-progress');
         const scanned = Number(payload.tables_scanned) || 0;
         const total = Number(payload.tables_total) || 0;
-        const percent = total > 0 ? Math.min(100, Math.floor((scanned / total) * 100)) : 0;
 
         if (badgeNode) {
             paintBadge(badgeNode, status);
         }
 
-        if (message && MESSAGES[status]) {
-            message.textContent = MESSAGES[status];
+        if (message) {
+            message.hidden = status !== 'PENDING';
+        }
+
+        if (scanning) {
+            scanning.hidden = status !== 'RUNNING';
         }
 
         if (meter) {
             meter.hidden = status !== 'RUNNING';
-        }
-
-        if (bar) {
-            bar.style.width = percent + '%';
-        }
-
-        if (progress) {
-            progress.textContent = scanned + ' / ' + total;
-        }
-
-        const track = node.querySelector('.find-replace-meter');
-
-        if (track) {
-            track.setAttribute('aria-valuemax', String(total));
-            track.setAttribute('aria-valuenow', String(scanned));
+            meter.dataset.max = String(total);
+            meter.dataset.value = String(scanned);
         }
     }
 }

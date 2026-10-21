@@ -86,26 +86,6 @@
     color: #6c757d;
 }
 
-.find-replace-meter-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.find-replace-meter {
-    flex: 1;
-    height: 0.5rem;
-    overflow: hidden;
-    border-radius: 1rem;
-    background: #e9ecef;
-}
-
-.find-replace-meter > span {
-    display: block;
-    height: 100%;
-    background: #337ab7;
-}
-
 .find-replace-progress {
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
