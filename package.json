@@ -1,12 +1,9 @@
 {
   "name": "nails-module-find-replace",
-  "description": "Admin assets for the Nails find-replace module",
+  "description": "This is the \"Find & Replace\" module for Nails.",
+  "author": "hello@nailsapp.co.uk",
   "license": "MIT",
-  "engines": {
-    "node": "24.21.0",
-    "yarn": "1.22.10"
-  },
-  "packageManager": "yarn@1.22.10",
+  "repository": "https://github.com/nails/module-find-replace",
   "devDependencies": {
     "autoprefixer": "^9.8.8",
     "css-loader": "^7.1.5",
