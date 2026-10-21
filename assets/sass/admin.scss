@@ -26,6 +26,14 @@
 
 .find-replace-searches {
     margin-top: 2.5rem;
+
+    .find-replace-status,
+    .find-replace-progress,
+    .find-replace-results,
+    .find-replace-last-run,
+    .actions {
+        width: 250px;
+    }
 }
 
 .find-replace-detail__term {

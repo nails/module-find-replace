@@ -62,11 +62,11 @@ $apiUrl = siteUrl('api/find-replace/search');
             <thead class="table-dark">
                 <tr>
                     <th>Term</th>
-                    <th style="width: 200px;">Status</th>
-                    <th style="width: 200px;">Progress</th>
-                    <th style="width: 200px;">Results</th>
-                    <th style="width: 200px;">Last run</th>
-                    <th class="actions" style="width: 200px;">Actions</th>
+                    <th class="find-replace-status">Status</th>
+                    <th class="find-replace-progress">Progress</th>
+                    <th class="find-replace-results">Results</th>
+                    <th class="find-replace-last-run">Last run</th>
+                    <th class="actions">Actions</th>
                 </tr>
             </thead>
             <tbody id="find-replace-searches">
