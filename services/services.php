@@ -11,6 +11,7 @@ use Nails\FindReplace\Model;
 use Nails\FindReplace\Resource;
 use Nails\FindReplace\Service\Access;
 use Nails\FindReplace\Service\Engine;
+use Nails\FindReplace\Service\Queue;
 use Nails\FindReplace\Service\Registry;
 use Nails\FindReplace\Service\Schema;
 
@@ -55,6 +56,13 @@ return [
             }
 
             return new Access($searches, $results, $changes, $database);
+        },
+        'Queue' => function (): Queue {
+            if (class_exists('\App\FindReplace\Service\Queue')) {
+                return new \App\FindReplace\Service\Queue();
+            }
+
+            return new Queue();
         },
     ],
     'models' => [
