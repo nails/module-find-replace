@@ -267,6 +267,20 @@ if ($search->status() === Search::STATUS_COMPLETE) {
                         <?php
 
                         $hitFacets = $hit->getFacets();
+                        $title = $hit->getTitle() ?? '';
+                        $resolver = $hit->getEntityLabel() ?? '';
+
+                        if ($resolver === '') {
+                            $resolver = $hitFacets['resolver'] ?? $hit->getTable();
+                        }
+
+                        $recordId = $hit->getEntityId() ?? '';
+
+                        if ($recordId === '') {
+                            $recordId = $hit->getId();
+                        }
+
+                        $badgeMarkup = '';
 
                         foreach ($badgeKeys as $badgeKey) {
                             $badgeValue = $hitFacets[$badgeKey] ?? '';
@@ -275,30 +289,25 @@ if ($search->status() === Search::STATUS_COMPLETE) {
                                 continue;
                             }
 
-                            ?>
-                            <span class="badge badge-secondary u-mr5"><?=htmlspecialchars($badgeValue)?></span>
-                            <?php
+                            $badgeMarkup .= '<span class="badge badge-secondary u-mr5">'
+                                . htmlspecialchars($badgeValue)
+                                . '</span>';
                         }
 
-                        if ($hit->getEntityLabel() !== null && $hit->getEntityLabel() !== '') {
+                        if ($badgeMarkup !== '' || $title !== '') {
                             ?>
-                            <?=htmlspecialchars($hit->getEntityLabel())?>
-                            #<?=htmlspecialchars((string) $hit->getEntityId())?>
-                            <?php
-                        } else {
-                            ?>
-                            <code><?=htmlspecialchars($hit->getTable())?></code>
-                            <?=htmlspecialchars($hit->getId())?>
-                            <?php
-                        }
+                            <div><?=$badgeMarkup?><?php
 
-                        if ($hit->getTitle() !== null && $hit->getTitle() !== '') {
-                            ?>
-                            <div><?=htmlspecialchars($hit->getTitle())?></div>
+                            if ($title !== '') {
+                                ?><strong><?=htmlspecialchars($title)?></strong><?php
+                            }
+
+                            ?></div>
                             <?php
                         }
 
                         ?>
+                        <small><?=htmlspecialchars($resolver)?> #<?=htmlspecialchars($recordId)?></small>
                     </td>
                     <td><code><?=htmlspecialchars((string) $hit->getMatched()?->getColumn())?></code></td>
                     <td class="find-replace-snippet"><?=$row->snippet($search->isCaseSensitive())?></td>
