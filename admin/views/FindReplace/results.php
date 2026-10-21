@@ -27,7 +27,6 @@ $badges = [
 [$badgeClass, $badgeLabel] = $badges[$search->status()] ?? ['badge-secondary', $search->status()];
 $scanned = $search->tablesScanned();
 $totalTables = $search->tablesTotal();
-$percent = $totalTables > 0 ? (int) floor(($scanned / $totalTables) * 100) : 0;
 $running = $search->status() === Search::STATUS_RUNNING;
 
 ?>
@@ -106,15 +105,11 @@ if ($search->isOpen()) {
 
     if ($search->isOpen()) {
         ?>
-        <p data-find-replace-message>
-            <?=$running ? 'Scanning tables.' : 'Waiting for a worker to start this search.'?>
-        </p>
-        <p class="find-replace-meter-row" data-find-replace-meter<?=$running ? '' : ' hidden'?>>
-            <span class="find-replace-meter" role="progressbar" aria-valuemin="0" aria-valuemax="<?=$totalTables?>" aria-valuenow="<?=$scanned?>">
-                <span data-find-replace-bar style="width: <?=$percent?>%"></span>
-            </span>
-            <span class="find-replace-progress"><?=$scanned?> / <?=$totalTables?></span>
-        </p>
+        <div class="alert alert-info" data-find-replace-message<?=$running ? ' hidden' : ''?>>
+            Waiting for a worker to start this search.
+        </div>
+        <p data-find-replace-scanning<?=$running ? '' : ' hidden'?>>Scanning tables.</p>
+        <div class="js-admin-progress" data-value="<?=$scanned?>" data-max="<?=$totalTables?>"<?=$running ? '' : ' hidden'?>></div>
         <?php
     }
 
