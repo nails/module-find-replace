@@ -20,12 +20,11 @@ use Nails\FindReplace\Model\Change;
 use Nails\FindReplace\Model\Result;
 use Nails\FindReplace\Model\Search;
 use Nails\FindReplace\Output\Csv;
-use Nails\FindReplace\Queue\Task\Search as SearchTask;
 use Nails\FindReplace\Resource;
 use Nails\FindReplace\Service\Access;
 use Nails\FindReplace\Service\Engine;
+use Nails\FindReplace\Service\Queue;
 use Nails\FindReplace\Service\Registry;
-use Nails\Queue\Interface\Data;
 
 class FindReplace extends Base
 {
@@ -52,6 +51,7 @@ class FindReplace extends Base
         $this
             ->addBreadcrumb('Utilities')
             ->addBreadcrumb('Find & Replace')
+            ->setData('queueWarning', $this->searchQueue()->warning())
             ->loadView('index');
     }
 
@@ -67,6 +67,8 @@ class FindReplace extends Base
         try {
             $include = $this->tableEntries($input, 'include_tables');
             $exclude = $this->tableEntries($input, 'exclude_tables');
+            $queue = $this->searchQueue();
+            $queue->assertAvailable();
             $id = $this->searches()->open(
                 $this->userId(),
                 $this->requiredTerm($input),
@@ -75,7 +77,7 @@ class FindReplace extends Base
                 $include,
                 $exclude,
             );
-            $this->queue($id);
+            $queue->push($id);
         } catch (\InvalidArgumentException $exception) {
             $this->oUserFeedback->error($exception->getMessage());
             redirect(self::url());
@@ -257,9 +259,20 @@ class FindReplace extends Base
     {
         $this->requireSearchPermission();
         $search = $this->requireOwned();
+        $queue = $this->searchQueue();
+
+        try {
+            $queue->assertAvailable();
+        } catch (\InvalidArgumentException $exception) {
+            $this->oUserFeedback->error($exception->getMessage());
+            redirect(self::url('results') . '?id=' . (int) $search->id);
+
+            return;
+        }
+
         $this->searches()->markPending((int) $search->id);
         $this->resultModel()->clear((int) $search->id);
-        $this->queue((int) $search->id);
+        $queue->push((int) $search->id);
         $this->oUserFeedback->success('Search queued again.');
         redirect(self::url('results') . '?id=' . (int) $search->id);
     }
@@ -410,16 +423,15 @@ class FindReplace extends Base
         return (int) $id;
     }
 
-    private function queue(int $id): void
+    private function searchQueue(): Queue
     {
-        $manager = Factory::service('Manager', \Nails\Queue\Constants::MODULE_SLUG);
-        $data = Factory::factory('Data', \Nails\Queue\Constants::MODULE_SLUG, $id);
+        $queue = Factory::service('Queue', Constants::MODULE_SLUG);
 
-        if (!method_exists($manager, 'push') || !$data instanceof Data) {
-            throw new \RuntimeException('Queue is not available');
+        if (!$queue instanceof Queue) {
+            throw new \RuntimeException('Find-replace queue is not available');
         }
 
-        $manager->push(new SearchTask(), $data);
+        return $queue;
     }
 
     /**

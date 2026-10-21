@@ -14,9 +14,8 @@ use Nails\FindReplace\Constants;
 use Nails\FindReplace\Exclusion\Pattern;
 use Nails\FindReplace\Model\Result;
 use Nails\FindReplace\Model\Search as SearchModel;
-use Nails\FindReplace\Queue\Task\Search as SearchTask;
 use Nails\FindReplace\Resource;
-use Nails\Queue\Interface\Data;
+use Nails\FindReplace\Service\Queue;
 
 class Search extends \Nails\Api\Controller\Base
 {
@@ -51,6 +50,8 @@ class Search extends \Nails\Api\Controller\Base
         $input = $this->input();
 
         try {
+            $queue = $this->searchQueue();
+            $queue->assertAvailable();
             $id = $this->searches()->open(
                 $this->userId(),
                 $this->requiredTerm($input),
@@ -59,7 +60,7 @@ class Search extends \Nails\Api\Controller\Base
                 $this->tableEntries($input['include_tables'] ?? null),
                 $this->tableEntries($input['exclude_tables'] ?? null),
             );
-            $this->queue($id);
+            $queue->push($id);
         } catch (\InvalidArgumentException $exception) {
             throw new ValidationException($exception->getMessage());
         }
@@ -70,9 +71,17 @@ class Search extends \Nails\Api\Controller\Base
     public function postRerun(): ApiResponse
     {
         $id = (int) $this->owned($this->requestId($this->input()))->id;
+        $queue = $this->searchQueue();
+
+        try {
+            $queue->assertAvailable();
+        } catch (\InvalidArgumentException $exception) {
+            throw new ValidationException($exception->getMessage());
+        }
+
         $this->searches()->markPending($id);
         $this->results()->clear($id);
-        $this->queue($id);
+        $queue->push($id);
 
         return $this->respond($this->payload($this->owned($id)));
     }
@@ -249,16 +258,15 @@ class Search extends \Nails\Api\Controller\Base
         return (int) $id;
     }
 
-    private function queue(int $id): void
+    private function searchQueue(): Queue
     {
-        $manager = Factory::service('Manager', \Nails\Queue\Constants::MODULE_SLUG);
-        $data = Factory::factory('Data', \Nails\Queue\Constants::MODULE_SLUG, $id);
+        $queue = Factory::service('Queue', Constants::MODULE_SLUG);
 
-        if (!method_exists($manager, 'push') || !$data instanceof Data) {
-            throw new \RuntimeException('Queue is not available');
+        if (!$queue instanceof Queue) {
+            throw new \RuntimeException('Find-replace queue is not available');
         }
 
-        $manager->push(new SearchTask(), $data);
+        return $queue;
     }
 
     /**

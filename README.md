@@ -15,4 +15,6 @@ Install with Composer:
 composer require nails/module-find-replace
 ```
 
+Admin searches are queued. `FIND_REPLACE_QUEUE` chooses the queue; when it is unset the search uses `default`. The Find & Replace index warns when that queue has no live worker, using the same check as the queue dashboard alert.
+
 See [the documentation](https://docs.nailsapp.co.uk/modules/find-replace).

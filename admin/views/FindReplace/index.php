@@ -1,9 +1,20 @@
 <?php
 
+/** @var string|null $queueWarning */
+
 $apiUrl = siteUrl('api/find-replace/search');
 
 ?>
 <div id="find-replace" data-api="<?=htmlspecialchars($apiUrl)?>">
+    <?php
+
+    if (is_string($queueWarning) && $queueWarning !== '') {
+        ?>
+        <div class="alert alert-warning"><?=htmlspecialchars($queueWarning)?></div>
+        <?php
+    }
+
+    ?>
     <p>Search saved content, then replace matches from the results screen. A search and its rows are kept or deleted together.</p>
     <div id="find-replace-alert" class="alert" hidden></div>
     <?=form_open(null, 'id="find-replace-form"')?>
