@@ -1,6 +1,7 @@
 parameters:
     level: 10
     paths:
+        - ../admin/controllers
         - ../src
         - ../tests
     bootstrapFiles:
@@ -9,4 +10,4 @@ parameters:
         - ../vendor/nails/common/helpers/url.php
         - ../vendor/nails/common/src/Common/CodeIgniter/Core/Common.php
         - ../vendor/nails/module-auth/helpers/user.php
-        - ../vendor/nails/module-admin/helpers/permission.php
+        - ../vendor/nails/module-admin/src/Controller/Base.php

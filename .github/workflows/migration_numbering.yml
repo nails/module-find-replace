@@ -2,7 +2,7 @@ name: migration_numbering
 on:
     pull_request:
     push:
-        branches: [ main, develop ]
+        branches: [ main, develop, feature/pre-new-admin ]
         paths:
             - 'src/Database/Migration/**'
             - 'composer.json'

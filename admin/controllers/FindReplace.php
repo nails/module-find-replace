@@ -1,16 +1,18 @@
 <?php
 
-namespace Nails\FindReplace\Admin\Controller;
+namespace Nails\Admin\FindReplace;
 
 use Nails\Admin\Controller\Base;
 use Nails\Admin\Factory\Nav;
 use Nails\Admin\Helper;
 use Nails\Common\Service\Input;
+use Nails\Common\Service\MetaData;
 use Nails\Common\Service\Output;
 use Nails\Common\Service\PDODatabase;
 use Nails\Factory;
 use Nails\FindReplace\Admin\OutcomeNotice;
 use Nails\FindReplace\Admin\Permission;
+use Nails\FindReplace\Admin\Url;
 use Nails\FindReplace\Constants;
 use Nails\FindReplace\Exclusion\Pattern;
 use Nails\FindReplace\Factory\Outcome;
@@ -30,9 +32,19 @@ class FindReplace extends Base
 {
     const PER_PAGE = 50;
 
+    /**
+     * The view data, shared with the admin router by reference.
+     *
+     * @var array<string, mixed>
+     */
+    public $data;
+
+    /**
+     * @return Nav|array<Nav>|null
+     */
     public static function announce(): Nav|array|null
     {
-        if (!userHasPermission(Permission\Search::class)) {
+        if (!userHasPermission(Permission::SEARCH)) {
             return null;
         }
 
@@ -45,6 +57,22 @@ class FindReplace extends Base
         return $nav;
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public static function permissions(): array
+    {
+        return [
+            'search' => 'Can search, view results, export CSV, and manage your own saved searches',
+            'replace' => 'Can apply find-replace replacements and revert your own changes',
+        ];
+    }
+
+    public static function url(string $action = ''): string
+    {
+        return Url::to($action);
+    }
+
     public function index(): void
     {
         $this->requireSearchPermission();
@@ -54,10 +82,8 @@ class FindReplace extends Base
             $this->oUserFeedback->warning(htmlspecialchars($warning, ENT_QUOTES, 'UTF-8'));
         }
 
-        $this
-            ->addBreadcrumb('Utilities')
-            ->addBreadcrumb('Find & Replace')
-            ->loadView('index');
+        $this->title('Find &amp; Replace');
+        Helper::loadView('index');
     }
 
     public function create(): void
@@ -92,23 +118,6 @@ class FindReplace extends Base
 
         $this->oUserFeedback->success('Search queued.');
         redirect(self::url('results') . '?id=' . $id);
-    }
-
-    public function status(): void
-    {
-        $this->requireSearchPermission();
-        $search = $this->requireOwned();
-        $payload = [
-            'status' => $search->status(),
-            'tables_scanned' => $search->tablesScanned(),
-            'tables_total' => $search->tablesTotal(),
-            'result_count' => $search->resultCount(),
-            'error' => $search->errorMessage(),
-        ];
-        $json = json_encode($payload, JSON_THROW_ON_ERROR);
-        $this->output()
-            ->setContentType('application/json')
-            ->setOutput($json);
     }
 
     public function results(): void
@@ -155,20 +164,17 @@ class FindReplace extends Base
             );
         }
 
-        $this
-            ->addBreadcrumb('Utilities')
-            ->addBreadcrumb('Find & Replace', self::url())
-            ->addBreadcrumb($search->term())
-            ->setData('search', $search)
-            ->setData('rows', $rows)
-            ->setData('facets', $facets)
-            ->setData('facetOptions', $this->facetOptions((int) $search->id))
-            ->setData('badgeKeys', $this->registry()->badges())
-            ->setData('outstanding', $outstanding)
-            ->setData('pagination', Helper::paginationObject($page, self::PER_PAGE, $total))
-            ->setData('total', $total)
-            ->setData('canReplace', userHasPermission(Permission\Replace::class))
-            ->loadView('results');
+        $this->title('Find &amp; Replace: ' . htmlspecialchars($search->term(), ENT_QUOTES, 'UTF-8'));
+        $this->data['search'] = $search;
+        $this->data['rows'] = $rows;
+        $this->data['facets'] = $facets;
+        $this->data['facetOptions'] = $this->facetOptions((int) $search->id);
+        $this->data['badgeKeys'] = $this->registry()->badges();
+        $this->data['outstanding'] = $outstanding;
+        $this->data['pagination'] = Helper::paginationObject($page, self::PER_PAGE, $total);
+        $this->data['total'] = $total;
+        $this->data['canReplace'] = userHasPermission(Permission::REPLACE);
+        Helper::loadView('results');
     }
 
     public function export(): void
@@ -318,13 +324,10 @@ class FindReplace extends Base
             $runs[$row->getRunId()][] = $row;
         }
 
-        $this
-            ->addBreadcrumb('Utilities')
-            ->addBreadcrumb('Find & Replace', self::url())
-            ->addBreadcrumb('My changes')
-            ->setData('runs', $runs)
-            ->setData('canReplace', userHasPermission(Permission\Replace::class))
-            ->loadView('changes');
+        $this->title('Find &amp; Replace: My changes');
+        $this->data['runs'] = $runs;
+        $this->data['canReplace'] = userHasPermission(Permission::REPLACE);
+        Helper::loadView('changes');
     }
 
     public function revert(): void
@@ -373,9 +376,21 @@ class FindReplace extends Base
         redirect(self::url('changes'));
     }
 
+    /**
+     * The admin header prints the title as HTML, so callers escape it.
+     */
+    private function title(string $html): void
+    {
+        $page = $this->data['page'] ?? null;
+
+        if ($page instanceof MetaData) {
+            $page->title = $html;
+        }
+    }
+
     private function requireSearchPermission(): void
     {
-        if (!userHasPermission(Permission\Search::class)) {
+        if (!userHasPermission(Permission::SEARCH)) {
             unauthorised();
             exit;
         }
@@ -385,7 +400,7 @@ class FindReplace extends Base
     {
         $this->requireSearchPermission();
 
-        if (!userHasPermission(Permission\Replace::class)) {
+        if (!userHasPermission(Permission::REPLACE)) {
             unauthorised();
             exit;
         }

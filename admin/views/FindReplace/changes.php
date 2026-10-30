@@ -1,6 +1,6 @@
 <?php
 
-use Nails\FindReplace\Admin\Controller\FindReplace;
+use Nails\FindReplace\Admin\Url;
 use Nails\FindReplace\Factory\ChangeRecord;
 
 /** @var array<string, list<ChangeRecord>> $runs */
@@ -24,7 +24,7 @@ foreach ($runs as $runId => $rows) {
             <?php
 
             if ($canReplace) {
-                echo form_open(FindReplace::url('revert'), ['class' => 'form-inline']);
+                echo form_open(Url::to('revert'), ['class' => 'form-inline']);
                 ?>
                 <input type="hidden" name="run_id" value="<?=htmlspecialchars($runId)?>">
                 <button type="submit" class="btn btn-sm btn-default">Revert run</button>
@@ -63,7 +63,7 @@ foreach ($runs as $runId => $rows) {
                             <?php
 
                             if ($canReplace) {
-                                echo form_open(FindReplace::url('revert'));
+                                echo form_open(Url::to('revert'));
                                 ?>
                                 <input type="hidden" name="change_id" value="<?=$row->getId()?>">
                                 <button type="submit" class="btn btn-sm btn-default">Revert</button>
