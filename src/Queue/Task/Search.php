@@ -4,7 +4,7 @@ namespace Nails\FindReplace\Queue\Task;
 
 use Nails\Common\Service\Database;
 use Nails\Factory;
-use Nails\FindReplace\Admin\Controller\FindReplace;
+use Nails\FindReplace\Admin\Url;
 use Nails\FindReplace\Constants;
 use Nails\FindReplace\Factory\Email\Search\Complete;
 use Nails\FindReplace\Factory\Email\Search\Fail;
@@ -99,7 +99,7 @@ class Search implements Task
                 ->data([
                     'term' => $search->term(),
                     'result_count' => $resultCount,
-                    'results_url' => FindReplace::url('results') . '?id=' . (int) $search->id,
+                    'results_url' => Url::to('results') . '?id=' . (int) $search->id,
                 ])
                 ->send();
         } catch (\Throwable) {

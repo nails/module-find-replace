@@ -8,8 +8,8 @@ use Nails\Api\Factory\ApiResponse;
 use Nails\Common\Exception\ValidationException;
 use Nails\Common\Service\HttpCodes;
 use Nails\Factory;
-use Nails\FindReplace\Admin\Controller\FindReplace;
 use Nails\FindReplace\Admin\Permission;
+use Nails\FindReplace\Admin\Url;
 use Nails\FindReplace\Constants;
 use Nails\FindReplace\Exclusion\Pattern;
 use Nails\FindReplace\Model\Result;
@@ -23,7 +23,7 @@ class Search extends \Nails\Api\Controller\Base
 
     public static function requirePermission(): ?string
     {
-        return Permission\Search::class;
+        return Permission::SEARCH;
     }
 
     public function getRemap(string $method): ApiResponse
@@ -126,7 +126,7 @@ class Search extends \Nails\Api\Controller\Base
             'persistent' => $search->isPersistent(),
             'last_run' => $search->lastRunLabel(),
             'error' => $search->errorMessage(),
-            'results_url' => FindReplace::url('results') . '?id=' . $id,
+            'results_url' => Url::to('results') . '?id=' . $id,
         ];
     }
 

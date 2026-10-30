@@ -45,7 +45,7 @@ class Progress {
         const badgeNode = node.querySelector('[data-find-replace-badge]');
         const message = node.querySelector('[data-find-replace-message]');
         const scanning = node.querySelector('[data-find-replace-scanning]');
-        const meter = node.querySelector('.js-admin-progress');
+        const meter = node.querySelector('[data-find-replace-meter]');
         const scanned = Number(payload.tables_scanned) || 0;
         const total = Number(payload.tables_total) || 0;
 
@@ -63,8 +63,27 @@ class Progress {
 
         if (meter) {
             meter.hidden = status !== 'RUNNING';
-            meter.dataset.max = String(total);
-            meter.dataset.value = String(scanned);
+            this.paintMeter(meter, scanned, total);
+        }
+    }
+
+    paintMeter(meter, scanned, total) {
+        const track = meter.querySelector('.find-replace-meter__track');
+        const bar = meter.querySelector('.find-replace-meter__bar');
+        const label = meter.querySelector('.find-replace-meter__label');
+        const percent = total > 0 ? Math.min(100, Math.round(scanned / total * 100)) : 0;
+
+        if (track) {
+            track.setAttribute('aria-valuemax', String(total));
+            track.setAttribute('aria-valuenow', String(scanned));
+        }
+
+        if (bar) {
+            bar.style.width = percent + '%';
+        }
+
+        if (label) {
+            label.textContent = scanned + ' / ' + total + ' tables';
         }
     }
 }

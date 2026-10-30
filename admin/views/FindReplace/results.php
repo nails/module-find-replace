@@ -1,7 +1,7 @@
 <?php
 
 use Nails\Admin\Helper;
-use Nails\FindReplace\Admin\Controller\FindReplace;
+use Nails\FindReplace\Admin\Url;
 use Nails\FindReplace\Factory\StoredResult;
 use Nails\FindReplace\Model\Search;
 use Nails\FindReplace\Resource;
@@ -28,6 +28,7 @@ $badges = [
 $scanned = $search->tablesScanned();
 $totalTables = $search->tablesTotal();
 $running = $search->status() === Search::STATUS_RUNNING;
+$percent = $totalTables > 0 ? min(100, (int) round($scanned / $totalTables * 100)) : 0;
 
 ?>
 <fieldset class="find-replace-detail"<?php
@@ -109,7 +110,12 @@ if ($search->isOpen()) {
             Waiting for a worker to start this search.
         </div>
         <p data-find-replace-scanning<?=$running ? '' : ' hidden'?>>Scanning tables.</p>
-        <div class="js-admin-progress" data-value="<?=$scanned?>" data-max="<?=$totalTables?>"<?=$running ? '' : ' hidden'?>></div>
+        <div class="find-replace-meter" data-find-replace-meter<?=$running ? '' : ' hidden'?>>
+            <span class="find-replace-meter__track" role="progressbar" aria-valuemin="0" aria-valuemax="<?=$totalTables?>" aria-valuenow="<?=$scanned?>">
+                <span class="find-replace-meter__bar" style="width: <?=$percent?>%"></span>
+            </span>
+            <span class="find-replace-meter__label"><?=$scanned?> / <?=$totalTables?> tables</span>
+        </div>
         <?php
     }
 
@@ -125,7 +131,7 @@ if ($search->isOpen()) {
 <?php
 
 if ($search->status() === Search::STATUS_FAILED) {
-    echo form_open(FindReplace::url('rerun'));
+    echo form_open(Url::to('rerun'));
     ?>
     <input type="hidden" name="id" value="<?=$id?>">
     <button type="submit" class="btn btn-primary">Run again</button>
@@ -146,7 +152,7 @@ if ($search->status() === Search::STATUS_COMPLETE) {
     if ($hasFilters) {
         ?>
         <div class="search clearfix">
-            <?=form_open(FindReplace::url('results'), ['method' => 'GET'])?>
+            <?=form_open(Url::to('results'), ['method' => 'GET'])?>
             <input type="hidden" name="id" value="<?=$id?>">
             <?php
 
@@ -195,7 +201,7 @@ if ($search->status() === Search::STATUS_COMPLETE) {
             ?>
             <div class="actions">
                 <button type="submit" class="btn btn-xs btn-primary">Search</button>
-                <?=anchor(FindReplace::url('results') . '?id=' . $id, 'Reset', 'class="btn btn-xs btn-default"')?>
+                <?=anchor(Url::to('results') . '?id=' . $id, 'Reset', 'class="btn btn-xs btn-default"')?>
             </div>
             <?=form_close()?>
         </div>
@@ -204,7 +210,7 @@ if ($search->status() === Search::STATUS_COMPLETE) {
 
     echo Helper::loadPagination($pagination);
 
-    echo form_open(FindReplace::url('replace'), [
+    echo form_open(Url::to('replace'), [
         'id' => 'find-replace-results',
         'data-filtered' => $filtered ? '1' : '0',
     ])?>
