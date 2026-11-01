@@ -16,7 +16,7 @@
         "nails/module-queue": "dev-develop"
     },
     "require-dev": {
-        "phpunit/phpunit": "^12.0",
+        "phpunit/phpunit": "^13.4",
         "phpstan/phpstan": "^2.0"
     },
     "autoload": {
