@@ -6,6 +6,7 @@ use Nails\Common\Model\Base;
 use Nails\Common\Service\PDODatabase;
 use Nails\Factory;
 use Nails\FindReplace\Constants;
+use Nails\FindReplace\Editability;
 use Nails\FindReplace\Factory\Action;
 use Nails\FindReplace\Factory\Hit;
 use Nails\FindReplace\Factory\Matched;
@@ -66,6 +67,7 @@ class Result extends Base
 
     /**
      * @param array<string, string> $facets
+     * @param bool|null $readOnly Null keeps read-only and replaceable rows
      *
      * @return list<StoredResult>
      */
@@ -75,6 +77,7 @@ class Result extends Base
         int $page,
         int $perPage,
         int $contextLength,
+        ?bool $readOnly = null,
     ): array {
         $page = max(1, $page);
         $perPage = max(1, $perPage);
@@ -84,7 +87,7 @@ class Result extends Base
         $statement = $this->database()->prepare(
             'SELECT result.*
             FROM ' . $this->quote(self::TABLE) . ' result
-            WHERE result.search_id = :search_id' . $this->openSql() . $facetSql . '
+            WHERE result.search_id = :search_id' . $this->openSql() . $facetSql . $this->readOnlySql($readOnly) . '
             ORDER BY result.id ASC
             LIMIT ' . $perPage . ' OFFSET ' . $offset
         );
@@ -95,15 +98,16 @@ class Result extends Base
 
     /**
      * @param array<string, string> $facets
+     * @param bool|null $readOnly Null keeps read-only and replaceable rows
      */
-    public function count(int $searchId, array $facets): int
+    public function count(int $searchId, array $facets, ?bool $readOnly = null): int
     {
         [$facetSql, $parameters] = $this->facetSql($facets);
         $parameters['search_id'] = $searchId;
         $statement = $this->database()->prepare(
             'SELECT COUNT(*)
             FROM ' . $this->quote(self::TABLE) . ' result
-            WHERE result.search_id = :search_id' . $this->openSql() . $facetSql
+            WHERE result.search_id = :search_id' . $this->openSql() . $facetSql . $this->readOnlySql($readOnly)
         );
         $statement->execute($parameters);
         $count = $statement->fetchColumn();
@@ -148,15 +152,49 @@ class Result extends Base
     }
 
     /**
+     * Outstanding rows for each Editability option.
+     *
+     * @return array<string, int>
+     */
+    public function countsByEditability(int $searchId): array
+    {
+        $statement = $this->database()->prepare(
+            'SELECT result.read_only, COUNT(*) AS total
+            FROM ' . $this->quote(self::TABLE) . ' result
+            WHERE result.search_id = :search_id' . $this->openSql() . '
+            GROUP BY result.read_only'
+        );
+        $statement->execute(['search_id' => $searchId]);
+        $counts = [
+            Editability::REPLACEABLE => 0,
+            Editability::READ_ONLY => 0,
+        ];
+
+        foreach ($this->rows($statement) as $row) {
+            $total = $row['total'] ?? null;
+
+            if (!is_numeric($total)) {
+                continue;
+            }
+
+            $key = $this->flag($row['read_only'] ?? null) ? Editability::READ_ONLY : Editability::REPLACEABLE;
+            $counts[$key] = (int) $total;
+        }
+
+        return $counts;
+    }
+
+    /**
      * Ids for this search. When $onlyIds is set, an id from another search returns null.
-     * Ids that miss the facet filter are dropped.
+     * Ids that miss the facet or read-only filter are dropped.
      *
      * @param array<string, string> $facets
      * @param list<int>|null $onlyIds
+     * @param bool|null $readOnly Null keeps read-only and replaceable rows
      *
      * @return list<int>|null
      */
-    public function ids(int $searchId, array $facets, ?array $onlyIds): ?array
+    public function ids(int $searchId, array $facets, ?array $onlyIds, ?bool $readOnly = null): ?array
     {
         if ($onlyIds !== null) {
             $onlyIds = array_values(array_unique($onlyIds));
@@ -189,7 +227,7 @@ class Result extends Base
         $statement = $this->database()->prepare(
             'SELECT result.id
             FROM ' . $this->quote(self::TABLE) . ' result
-            WHERE result.search_id = :search_id' . $this->openSql() . $facetSql . $limit . '
+            WHERE result.search_id = :search_id' . $this->openSql() . $facetSql . $this->readOnlySql($readOnly) . $limit . '
             ORDER BY result.id ASC'
         );
         $statement->execute($parameters);
@@ -294,6 +332,15 @@ class Result extends Base
     private function openSql(): string
     {
         return ' AND result.applied = 0';
+    }
+
+    private function readOnlySql(?bool $readOnly): string
+    {
+        return match ($readOnly) {
+            null => '',
+            true => ' AND result.read_only = 1',
+            false => ' AND result.read_only = 0',
+        };
     }
 
     private function insertHit(int $searchId, Hit $hit, bool $caseSensitive): void
