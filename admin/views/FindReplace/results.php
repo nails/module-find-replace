@@ -32,6 +32,13 @@ $scanned = $search->tablesScanned();
 $totalTables = $search->tablesTotal();
 $running = $search->status() === Search::STATUS_RUNNING;
 
+//  Match the admin index pages: published reads as success, draft as warning (CMS pages), deleted as danger
+$badgeClasses = [
+    'PUBLISHED' => 'badge-success',
+    'DRAFT' => 'badge-warning',
+    'DELETED' => 'badge-danger',
+];
+
 ?>
 <fieldset class="find-replace-detail"<?php
 
@@ -112,7 +119,7 @@ if ($search->isOpen()) {
             Waiting for a worker to start this search.
         </div>
         <p data-find-replace-scanning<?=$running ? '' : ' hidden'?>>Scanning tables.</p>
-        <div class="js-admin-progress" data-value="<?=$scanned?>" data-max="<?=$totalTables?>"<?=$running ? '' : ' hidden'?>></div>
+        <div class="js-admin-progress find-replace-detail__progress" data-value="<?=$scanned?>" data-max="<?=$totalTables?>"<?=$running ? '' : ' hidden'?>></div>
         <?php
     }
 
@@ -243,8 +250,8 @@ if ($search->status() === Search::STATUS_COMPLETE) {
         <thead class="table-dark">
             <tr>
                 <th><input type="checkbox" class="js-toggle-all" aria-label="Select all"></th>
-                <th>Record</th>
-                <th>Column</th>
+                <th class="record">Record</th>
+                <th class="column">Column</th>
                 <th>Match</th>
                 <th>Replacement</th>
                 <th class="actions"></th>
@@ -281,7 +288,7 @@ if ($search->status() === Search::STATUS_COMPLETE) {
 
                         ?>
                     </td>
-                    <td>
+                    <td class="record">
                         <?php
 
                         $hitFacets = $hit->getFacets();
@@ -313,7 +320,7 @@ if ($search->status() === Search::STATUS_COMPLETE) {
                                 continue;
                             }
 
-                            $badgeMarkup .= '<span class="badge badge-secondary u-mr5">'
+                            $badgeMarkup .= '<span class="badge ' . ($badgeClasses[strtoupper($badgeValue)] ?? 'badge-secondary') . ' u-mr5">'
                                 . htmlspecialchars($badgeValue)
                                 . '</span>';
                         }
@@ -333,7 +340,7 @@ if ($search->status() === Search::STATUS_COMPLETE) {
                         ?>
                         <small><?=htmlspecialchars($resolver)?> #<?=htmlspecialchars($recordId)?></small>
                     </td>
-                    <td>
+                    <td class="column">
                         <code><?=htmlspecialchars((string) $hit->getMatched()?->getColumn())?></code>
                         <?php
 
