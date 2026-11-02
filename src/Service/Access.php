@@ -53,19 +53,20 @@ class Access
 
     /**
      * Result ids for a search this user owns.
-     * A requested id from another search returns null. Facet filters drop the rest.
+     * A requested id from another search returns null. Facet and read-only filters drop the rest.
      *
      * @param array<string, string> $facets
      * @param list<int>|null $onlyIds
+     * @param bool|null $readOnly Null keeps read-only and replaceable rows
      *
      * @return list<int>|null
      */
-    public function resultIds(int $searchId, int $userId, array $facets, ?array $onlyIds): ?array
+    public function resultIds(int $searchId, int $userId, array $facets, ?array $onlyIds, ?bool $readOnly = null): ?array
     {
         if ($this->search($searchId, $userId) === null) {
             return null;
         }
 
-        return $this->results->ids($searchId, $facets, $onlyIds);
+        return $this->results->ids($searchId, $facets, $onlyIds, $readOnly);
     }
 }
