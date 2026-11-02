@@ -15,6 +15,18 @@
 }
 
 .find-replace-results {
+    .record {
+        min-width: 200px;
+    }
+
+    .column {
+        min-width: 150px;
+    }
+
+    .actions {
+        min-width: 125px;
+    }
+
     td.actions .btn {
         margin-bottom: 0.25rem;
     }
@@ -89,6 +101,12 @@
 
 .find-replace-detail__scope {
     color: #6c757d;
+}
+
+//  The admin fieldset has no padding and spaces each loose child itself
+//  (p, .alert, ul, ol); the progress bar is not one of those, so it matches them here
+.find-replace-detail__progress {
+    margin: 1.5rem 1.1rem;
 }
 
 .find-replace-progress {
