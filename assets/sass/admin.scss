@@ -15,15 +15,14 @@
 }
 
 .find-replace-results {
-    //  Wide enough that a read-only reason such as "read-only" stays on one line
-    th.actions,
-    td.actions {
-        min-width: 120px;
-    }
-
     td.actions .btn {
         margin-bottom: 0.25rem;
     }
+}
+
+.find-replace-reason {
+    display: block;
+    color: #6c757d;
 }
 
 [data-find-replace-status] {
