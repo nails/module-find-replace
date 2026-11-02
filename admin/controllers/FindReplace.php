@@ -14,6 +14,7 @@ use Nails\FindReplace\Admin\OutcomeNotice;
 use Nails\FindReplace\Admin\Permission;
 use Nails\FindReplace\Admin\Url;
 use Nails\FindReplace\Constants;
+use Nails\FindReplace\Editability;
 use Nails\FindReplace\Exclusion\Pattern;
 use Nails\FindReplace\Factory\Outcome;
 use Nails\FindReplace\Factory\Run;
@@ -132,6 +133,14 @@ class FindReplace extends Base
             $facets = [];
         }
 
+        try {
+            $editable = $this->editable($this->input());
+        } catch (\InvalidArgumentException $exception) {
+            $this->oUserFeedback->error($exception->getMessage());
+            $editable = Editability::ANY;
+        }
+
+        $readOnly = Editability::readOnly($editable);
         $page = $this->page($this->input());
         $total = 0;
         $outstanding = 0;
@@ -139,7 +148,7 @@ class FindReplace extends Base
 
         if ($search->status() === Search::STATUS_COMPLETE) {
             $outstanding = $this->resultModel()->outstanding((int) $search->id);
-            $total = $this->resultModel()->count((int) $search->id, $facets);
+            $total = $this->resultModel()->count((int) $search->id, $facets, $readOnly);
             $page = min($page, max(1, (int) ceil($total / self::PER_PAGE)));
             $rows = $this->resultModel()->page(
                 (int) $search->id,
@@ -147,6 +156,7 @@ class FindReplace extends Base
                 $page,
                 self::PER_PAGE,
                 $search->contextLength(),
+                $readOnly,
             );
         }
 
@@ -155,6 +165,10 @@ class FindReplace extends Base
 
             if ($facets !== []) {
                 $exportQuery['facet'] = $facets;
+            }
+
+            if ($editable !== Editability::ANY) {
+                $exportQuery['editable'] = $editable;
             }
 
             Helper::addHeaderButton(
@@ -169,6 +183,8 @@ class FindReplace extends Base
         $this->data['rows'] = $rows;
         $this->data['facets'] = $facets;
         $this->data['facetOptions'] = $this->facetOptions((int) $search->id);
+        $this->data['editable'] = $editable;
+        $this->data['editableCounts'] = $this->resultModel()->countsByEditability((int) $search->id);
         $this->data['badgeKeys'] = $this->registry()->badges();
         $this->data['outstanding'] = $outstanding;
         $this->data['pagination'] = Helper::paginationObject($page, self::PER_PAGE, $total);
@@ -184,6 +200,7 @@ class FindReplace extends Base
 
         try {
             $facets = $this->facets($this->input());
+            $editable = $this->editable($this->input());
         } catch (\InvalidArgumentException $exception) {
             $this->oUserFeedback->error($exception->getMessage());
             redirect(self::url('results') . '?id=' . (int) $search->id);
@@ -191,7 +208,13 @@ class FindReplace extends Base
             return;
         }
 
-        $ids = $this->access()->resultIds((int) $search->id, $this->userId(), $facets, null);
+        $ids = $this->access()->resultIds(
+            (int) $search->id,
+            $this->userId(),
+            $facets,
+            null,
+            Editability::readOnly($editable),
+        );
 
         if ($ids === null) {
             show404();
@@ -231,6 +254,7 @@ class FindReplace extends Base
 
         try {
             $facets = $this->facets($input);
+            $editable = $this->editable($input);
         } catch (\InvalidArgumentException $exception) {
             $this->oUserFeedback->error($exception->getMessage());
             redirect(self::url('results') . '?id=' . (int) $search->id);
@@ -239,7 +263,13 @@ class FindReplace extends Base
         }
         $scope = $this->text($input, 'scope');
         $onlyIds = $scope === 'all' ? null : $this->selectedIds($input);
-        $ids = $this->access()->resultIds((int) $search->id, $this->userId(), $facets, $onlyIds);
+        $ids = $this->access()->resultIds(
+            (int) $search->id,
+            $this->userId(),
+            $facets,
+            $onlyIds,
+            Editability::readOnly($editable),
+        );
 
         if ($ids === null) {
             show404();
@@ -248,7 +278,7 @@ class FindReplace extends Base
 
         if ($ids === []) {
             $this->oUserFeedback->error('Nothing to replace.');
-            redirect($this->resultsUrl((int) $search->id, $facets));
+            redirect($this->resultsUrl((int) $search->id, $facets, $editable));
 
             return;
         }
@@ -263,7 +293,7 @@ class FindReplace extends Base
             Run::admin($this->userId(), (int) $search->id),
         );
         $this->report($outcomes);
-        redirect($this->resultsUrl((int) $search->id, $facets));
+        redirect($this->resultsUrl((int) $search->id, $facets, $editable));
     }
 
     public function rerun(): void
@@ -540,6 +570,17 @@ class FindReplace extends Base
         return $facets;
     }
 
+    /**
+     * @throws \InvalidArgumentException When the value is not an Editability option
+     */
+    private function editable(Input $input): string
+    {
+        $value = $this->text($input, 'editable');
+        Editability::readOnly($value);
+
+        return $value;
+    }
+
     private function page(Input $input): int
     {
         $page = $input->get('page');
@@ -576,12 +617,16 @@ class FindReplace extends Base
     /**
      * @param array<string, string> $facets
      */
-    private function resultsUrl(int $id, array $facets, ?int $page = null): string
+    private function resultsUrl(int $id, array $facets, string $editable = Editability::ANY, ?int $page = null): string
     {
         $query = ['id' => $id];
 
         if ($facets !== []) {
             $query['facet'] = $facets;
+        }
+
+        if ($editable !== Editability::ANY) {
+            $query['editable'] = $editable;
         }
 
         if ($page !== null && $page > 1) {
