@@ -268,7 +268,12 @@ if ($search->status() === Search::STATUS_COMPLETE) {
                     <td>
                         <?php
 
-                        if (!$hit->isReadOnly()) {
+                        if ($hit->isReadOnly()) {
+                            $reason = (string) $hit->getReadOnlyReason();
+                            ?>
+                            <span class="fa fa-lock text-muted" title="<?=htmlspecialchars($reason)?>" aria-label="Read-only: <?=htmlspecialchars($reason)?>"></span>
+                            <?php
+                        } else {
                             ?>
                             <input type="checkbox" name="result_ids[]" value="<?=$row->getId()?>">
                             <?php
@@ -328,17 +333,22 @@ if ($search->status() === Search::STATUS_COMPLETE) {
                         ?>
                         <small><?=htmlspecialchars($resolver)?> #<?=htmlspecialchars($recordId)?></small>
                     </td>
-                    <td><code><?=htmlspecialchars((string) $hit->getMatched()?->getColumn())?></code></td>
-                    <td class="find-replace-snippet"><?=$row->snippet($search->isCaseSensitive())?></td>
-                    <td class="find-replace-preview"><?=$row->replacementPreview($search->replacement(), $search->isCaseSensitive())?></td>
-                    <td class="actions">
+                    <td>
+                        <code><?=htmlspecialchars((string) $hit->getMatched()?->getColumn())?></code>
                         <?php
 
                         if ($hit->isReadOnly()) {
                             ?>
-                            <span class="text-muted"><?=htmlspecialchars((string) $hit->getReadOnlyReason())?></span>
+                            <small class="find-replace-reason"><?=htmlspecialchars((string) $hit->getReadOnlyReason())?></small>
                             <?php
                         }
+
+                        ?>
+                    </td>
+                    <td class="find-replace-snippet"><?=$row->snippet($search->isCaseSensitive())?></td>
+                    <td class="find-replace-preview"><?=$row->replacementPreview($search->replacement(), $search->isCaseSensitive())?></td>
+                    <td class="actions">
+                        <?php
 
                         foreach ($hit->getActions() as $action) {
                             $class = $action->buttonClass();
