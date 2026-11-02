@@ -15,6 +15,12 @@
 }
 
 .find-replace-results {
+    //  Wide enough that a read-only reason such as "read-only" stays on one line
+    th.actions,
+    td.actions {
+        min-width: 120px;
+    }
+
     td.actions .btn {
         margin-bottom: 0.25rem;
     }
@@ -33,6 +39,11 @@
     .find-replace-last-run,
     .actions {
         width: 250px;
+    }
+
+    //  The buttons are built in JS with no whitespace between them
+    td.actions .btn + .btn {
+        margin-left: 0.25rem;
     }
 }
 

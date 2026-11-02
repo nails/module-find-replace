@@ -66,7 +66,7 @@ class Action
             }
         }
 
-        $base = $variant ? 'btn btn-sm' : 'btn btn-sm btn-primary';
+        $base = $variant ? 'btn btn-xs' : 'btn btn-xs btn-primary';
 
         return trim($base . ' ' . $extra);
     }
