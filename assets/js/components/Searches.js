@@ -200,7 +200,7 @@ class Searches {
     button(label, action, onClick, style) {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'btn btn-sm ' + (style || 'btn-default');
+        button.className = 'btn btn-xs ' + (style || 'btn-default');
         button.dataset.action = action;
         button.textContent = label;
         button.addEventListener('click', onClick);

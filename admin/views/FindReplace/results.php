@@ -2,6 +2,7 @@
 
 use Nails\Admin\Helper;
 use Nails\FindReplace\Admin\Url;
+use Nails\FindReplace\Editability;
 use Nails\FindReplace\Factory\StoredResult;
 use Nails\FindReplace\Model\Search;
 use Nails\FindReplace\Resource;
@@ -10,6 +11,8 @@ use Nails\FindReplace\Resource;
 /** @var list<StoredResult> $rows */
 /** @var array<string, string> $facets */
 /** @var array<string, array{label: string, values: array<string, int>}> $facetOptions */
+/** @var string $editable */
+/** @var array<string, int> $editableCounts */
 /** @var int $outstanding */
 /** @var stdClass $pagination */
 /** @var int $total */
@@ -17,7 +20,7 @@ use Nails\FindReplace\Resource;
 /** @var list<string> $badgeKeys */
 
 $id = (int) $search->id;
-$filtered = $facets !== [];
+$filtered = $facets !== [] || $editable !== Editability::ANY;
 $badges = [
     Search::STATUS_PENDING => ['badge-warning', 'Pending'],
     Search::STATUS_RUNNING => ['badge-info', 'Running'],
@@ -140,20 +143,32 @@ if ($search->status() === Search::STATUS_FAILED) {
 }
 
 if ($search->status() === Search::STATUS_COMPLETE) {
-    $hasFilters = false;
-
-    foreach ($facetOptions as $option) {
-        if ($option['values'] !== []) {
-            $hasFilters = true;
-            break;
-        }
-    }
-
-    if ($hasFilters) {
+    //  Facet values come from the same outstanding rows, so with none there is nothing to filter
+    if (array_sum($editableCounts) > 0) {
         ?>
         <div class="search clearfix">
             <?=form_open(Url::to('results'), ['method' => 'GET'])?>
             <input type="hidden" name="id" value="<?=$id?>">
+            <span class="filterGroup dropdown">
+                <span class="filterLabel">Fields</span>
+                <span class="filterDropdown">
+                    <select name="editable" class="select2">
+                        <option value="">Any</option>
+                        <?php
+
+                        foreach (Editability::LABELS as $value => $label) {
+                            $selected = $editable === $value ? ' selected' : '';
+                            ?>
+                            <option value="<?=htmlspecialchars($value)?>"<?=$selected?>>
+                                <?=htmlspecialchars($label)?> (<?=htmlspecialchars((string) ($editableCounts[$value] ?? 0))?>)
+                            </option>
+                            <?php
+                        }
+
+                        ?>
+                    </select>
+                </span>
+            </span>
             <?php
 
             foreach ($facetOptions as $key => $option) {
@@ -223,6 +238,12 @@ if ($search->status() === Search::STATUS_COMPLETE) {
         <?php
     }
 
+    if ($editable !== Editability::ANY) {
+        ?>
+        <input type="hidden" name="editable" value="<?=htmlspecialchars($editable)?>">
+        <?php
+    }
+
     ?>
     <table class="table table-striped table-hover find-replace-results">
         <thead class="table-dark">
@@ -253,7 +274,12 @@ if ($search->status() === Search::STATUS_COMPLETE) {
                     <td>
                         <?php
 
-                        if (!$hit->isReadOnly()) {
+                        if ($hit->isReadOnly()) {
+                            $reason = (string) $hit->getReadOnlyReason();
+                            ?>
+                            <span class="fa fa-lock text-muted" title="<?=htmlspecialchars($reason)?>" aria-label="Read-only: <?=htmlspecialchars($reason)?>"></span>
+                            <?php
+                        } else {
                             ?>
                             <input type="checkbox" name="result_ids[]" value="<?=$row->getId()?>">
                             <?php
@@ -313,17 +339,22 @@ if ($search->status() === Search::STATUS_COMPLETE) {
                         ?>
                         <small><?=htmlspecialchars($resolver)?> #<?=htmlspecialchars($recordId)?></small>
                     </td>
-                    <td><code><?=htmlspecialchars((string) $hit->getMatched()?->getColumn())?></code></td>
-                    <td class="find-replace-snippet"><?=$row->snippet($search->isCaseSensitive())?></td>
-                    <td class="find-replace-preview"><?=$row->replacementPreview($search->replacement(), $search->isCaseSensitive())?></td>
-                    <td class="actions">
+                    <td>
+                        <code><?=htmlspecialchars((string) $hit->getMatched()?->getColumn())?></code>
                         <?php
 
                         if ($hit->isReadOnly()) {
                             ?>
-                            <span class="text-muted"><?=htmlspecialchars((string) $hit->getReadOnlyReason())?></span>
+                            <small class="find-replace-reason"><?=htmlspecialchars((string) $hit->getReadOnlyReason())?></small>
                             <?php
                         }
+
+                        ?>
+                    </td>
+                    <td class="find-replace-snippet"><?=$row->snippet($search->isCaseSensitive())?></td>
+                    <td class="find-replace-preview"><?=$row->replacementPreview($search->replacement(), $search->isCaseSensitive())?></td>
+                    <td class="actions">
+                        <?php
 
                         foreach ($hit->getActions() as $action) {
                             $class = $action->buttonClass();
@@ -350,7 +381,7 @@ if ($search->status() === Search::STATUS_COMPLETE) {
     </table>
     <?php
 
-    if ($canReplace && $rows !== []) {
+    if ($canReplace && $rows !== [] && $editable !== Editability::READ_ONLY) {
         ?>
         <div class="admin-floating-controls">
             <button type="button" class="btn btn-danger js-find-replace-apply" data-scope="selected" disabled>

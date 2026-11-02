@@ -27,7 +27,7 @@ foreach ($runs as $runId => $rows) {
                 echo form_open(Url::to('revert'), ['class' => 'form-inline']);
                 ?>
                 <input type="hidden" name="run_id" value="<?=htmlspecialchars($runId)?>">
-                <button type="submit" class="btn btn-sm btn-default">Revert run</button>
+                <button type="submit" class="btn btn-xs btn-default">Revert run</button>
                 <?=form_close()?>
                 <?php
             }
@@ -66,7 +66,7 @@ foreach ($runs as $runId => $rows) {
                                 echo form_open(Url::to('revert'));
                                 ?>
                                 <input type="hidden" name="change_id" value="<?=$row->getId()?>">
-                                <button type="submit" class="btn btn-sm btn-default">Revert</button>
+                                <button type="submit" class="btn btn-xs btn-default">Revert</button>
                                 <?=form_close()?>
                                 <?php
                             }

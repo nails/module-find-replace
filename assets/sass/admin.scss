@@ -20,6 +20,11 @@
     }
 }
 
+.find-replace-reason {
+    display: block;
+    color: #6c757d;
+}
+
 [data-find-replace-status] {
     font-variant-numeric: tabular-nums;
 }
@@ -33,6 +38,11 @@
     .find-replace-last-run,
     .actions {
         width: 250px;
+    }
+
+    //  The buttons are built in JS with no whitespace between them
+    td.actions .btn + .btn {
+        margin-left: 0.25rem;
     }
 }
 

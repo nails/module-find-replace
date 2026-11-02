@@ -6,6 +6,7 @@ require_once __DIR__ . '/AdminDatabaseTestCase.php';
 
 use Nails\Factory;
 use Nails\FindReplace\Constants;
+use Nails\FindReplace\Editability;
 use Nails\FindReplace\Factory\Hit;
 use Nails\FindReplace\Factory\Matched;
 use Nails\FindReplace\Factory\Run;
@@ -110,16 +111,55 @@ class AccessTest extends AdminDatabaseTestCase
         $this->assertArrayNotHasKey('language', $counts);
     }
 
+    public function test_the_read_only_filter_limits_every_list(): void
+    {
+        $owner = 11;
+        $searchId = $this->searches()->open($owner, 'alpha', 'beta', true, [], []);
+        $this->results()->store($searchId, [
+            $this->hit('1', ['kind' => 'page']),
+            $this->hit('2', ['kind' => 'page'], true),
+            $this->hit('3', ['kind' => 'news'], true),
+        ], true);
+        $replaceableId = $this->resultId($searchId, '1');
+        $pageReadOnlyId = $this->resultId($searchId, '2');
+        $newsReadOnlyId = $this->resultId($searchId, '3');
+        $results = $this->results();
+        $access = $this->access();
+
+        $this->assertSame(
+            [Editability::REPLACEABLE => 1, Editability::READ_ONLY => 2],
+            $results->countsByEditability($searchId),
+        );
+        $this->assertSame(3, $results->count($searchId, []));
+        $this->assertSame(1, $results->count($searchId, [], false));
+        $this->assertSame(2, $results->count($searchId, [], true));
+        $this->assertSame(1, $results->count($searchId, ['kind' => 'page'], true));
+        $this->assertSame(
+            [$pageReadOnlyId, $newsReadOnlyId],
+            array_map(static fn($row): int => $row->getId(), $results->page($searchId, [], 1, 50, 80, true)),
+        );
+        $this->assertSame([$replaceableId], $access->resultIds($searchId, $owner, [], null, false));
+        $this->assertSame(
+            [$pageReadOnlyId],
+            $access->resultIds($searchId, $owner, ['kind' => 'page'], null, true),
+        );
+        $this->assertSame(
+            [],
+            $access->resultIds($searchId, $owner, [], [$pageReadOnlyId, $newsReadOnlyId], false),
+        );
+    }
+
     /**
      * @param array<string, string> $facets
      */
-    private function hit(string $id, array $facets): Hit
+    private function hit(string $id, array $facets, bool $readOnly = false): Hit
     {
         return new Hit(
             'fixture',
             $id,
             facets: $facets,
             matched: new Matched('fixture', 'body', 'plaintext', 'alpha', $id, 'alpha beta'),
+            readOnly: $readOnly,
         );
     }
 
