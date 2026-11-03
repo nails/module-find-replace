@@ -47,9 +47,13 @@
     .find-replace-status,
     .find-replace-progress,
     .find-replace-results,
-    .find-replace-last-run,
-    .actions {
+    .find-replace-last-run {
         width: 250px;
+    }
+
+    //  Wide enough for View results, Keep, Run again, and Delete on one line
+    .actions {
+        width: 350px;
     }
 }
 

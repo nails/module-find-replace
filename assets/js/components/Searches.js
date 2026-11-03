@@ -154,6 +154,8 @@ class Searches {
         row.querySelector('.find-replace-results').textContent = String(item.result_count);
         row.querySelector('.find-replace-last-run').textContent = item.last_run || '';
 
+        row.querySelector('[data-action="results"]').href = item.results_url;
+
         const keep = row.querySelector('[data-action="persistent"]');
         keep.textContent = item.persistent ? 'Stop keeping' : 'Keep';
         keep.dataset.persistent = item.persistent ? '0' : '1';
@@ -163,6 +165,7 @@ class Searches {
         const cell = document.createElement('td');
         cell.className = 'actions';
         cell.append(
+            this.linkButton('View results', 'results', item.results_url, 'btn-primary'),
             this.button('Keep', 'persistent', () => this.persist(item.id, cell)),
             this.button('Run again', 'rerun', () => this.rerun(item.id)),
             this.button('Delete', 'delete', () => this.remove(item.id), 'btn-danger'),
@@ -200,12 +203,26 @@ class Searches {
     button(label, action, onClick, style) {
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'btn btn-sm ' + (style || 'btn-default');
+        button.className = this.buttonClass(style);
         button.dataset.action = action;
         button.textContent = label;
         button.addEventListener('click', onClick);
 
         return button;
+    }
+
+    linkButton(label, action, href, style) {
+        const link = document.createElement('a');
+        link.className = this.buttonClass(style);
+        link.dataset.action = action;
+        link.href = href;
+        link.textContent = label;
+
+        return link;
+    }
+
+    buttonClass(style) {
+        return 'btn btn-sm ' + (style || 'btn-default');
     }
 
     cell(name, child) {
